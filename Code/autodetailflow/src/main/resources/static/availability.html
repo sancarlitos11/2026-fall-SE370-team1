@@ -1,0 +1,97 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoDetail Flow - Availability</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .time-slot {
+            background-color: #e5f5e5;
+            border: 1px solid #8ac78a;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>AutoDetail Flow</h1>
+    <h2>View Available Appointment Times</h2>
+
+    <label for="date">Select a date:</label>
+    <input type="date" id="date">
+
+    <button onclick="loadAvailability()">
+        View Available Times
+    </button>
+
+    <h3>Available Times</h3>
+    <div id="availableTimes"></div>
+
+    <script>
+        async function loadAvailability() {
+            const date = document.getElementById("date").value;
+            const container = document.getElementById("availableTimes");
+
+            if (!date) {
+                container.textContent = "Please select a date.";
+                return;
+            }
+
+            container.textContent = "Loading...";
+
+            try {
+                const response = await fetch(
+                    "/api/availability?date=" + date + "&duration=120"
+                );
+
+                if (!response.ok) {
+                    throw new Error("Unable to load availability");
+                }
+
+                const times = await response.json();
+                container.innerHTML = "";
+
+                if (times.length === 0) {
+                    container.textContent = "No available times.";
+                    return;
+                }
+
+                times.forEach(time => {
+                    const button = document.createElement("button");
+                    button.className = "time-slot";
+
+                    const hour = time.substring(11, 16);
+                    const [hours, minutes] = hour.split(":");
+                    const hour12 = Number(hours) % 12 || 12;
+                    const ampm = Number(hours) >= 12 ? "PM" : "AM";
+
+                    button.textContent =
+                        hour12 + ":" + minutes + " " + ampm;
+
+                    button.disabled = true;
+                    container.appendChild(button);
+                });
+
+            } catch (error) {
+                container.textContent =
+                    "Error loading available times.";
+            }
+        }
+    </script>
+
+</body>
+</html>
