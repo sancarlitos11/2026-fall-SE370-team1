@@ -125,4 +125,16 @@ public class AvailabilityServiceTest {
                 availableTimes.get(1)
         );
     }
+
+    @Test
+    public void testAppointmentStatuses() {
+
+        assertTrue(service.blocksAvailability("Pending"));
+        assertTrue(service.blocksAvailability("Scheduled"));
+
+        assertFalse(service.blocksAvailability("Completed"));
+        assertFalse(service.blocksAvailability("Cancelled"));
+        assertFalse(service.blocksAvailability("Declined"));
+        assertFalse(service.blocksAvailability(null));
+    }
 }

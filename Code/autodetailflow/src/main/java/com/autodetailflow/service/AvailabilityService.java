@@ -9,6 +9,17 @@ import org.springframework.stereotype.Service;
 @Service
 public class AvailabilityService {
 
+
+public boolean blocksAvailability(String status) {
+    if (status == null) {
+        return false;
+    }
+
+    return status.equalsIgnoreCase("Pending")
+            || status.equalsIgnoreCase("Scheduled");
+}
+
+
     public boolean isTimeAvailable(
             LocalDateTime requestedStart,
             int durationMinutes,
