@@ -1,4 +1,5 @@
 
+
 package com.autodetailflow.service;
 
 import com.autodetailflow.model.Appointment;
@@ -17,7 +18,8 @@ public class AvailabilityService {
         }
 
         return status.equalsIgnoreCase("Pending")
-                || status.equalsIgnoreCase("Scheduled");
+                || status.equalsIgnoreCase("Scheduled")
+                || status.equalsIgnoreCase("Confirmed");
     }
 
     // Checks whether two appointments overlap.
@@ -54,7 +56,8 @@ public class AvailabilityService {
 
         LocalDateTime currentTime = openingTime;
 
-        while (!currentTime.plusMinutes(durationMinutes).isAfter(closingTime)) {
+        while (!currentTime.plusMinutes(durationMinutes)
+                .isAfter(closingTime)) {
 
             boolean available = true;
 
@@ -93,18 +96,22 @@ public class AvailabilityService {
 
         for (Appointment appointment : appointments) {
 
-            // Pending and Scheduled appointments reserve their time slots.
+            // Pending, Scheduled and Confirmed appointments
+            // reserve their time slots.
             if (blocksAvailability(appointment.getStatus())) {
 
-                existingStarts.add(appointment.getAppointmentDateTime());
+                existingStarts.add(
+                        appointment.getAppointmentDateTime()
+                );
 
                 existingDurations.add(
-                        appointment.getDetailingPackage().getPackageDuration()
+                        appointment.getDetailingPackage()
+                                .getPackageDuration()
                 );
             }
         }
 
-        // Reuse our existing availability calculation.
+        // Reuse the existing availability calculation.
         return getAvailableTimes(
                 openingTime,
                 closingTime,

@@ -1,11 +1,14 @@
 
 package com.autodetailflow.controller;
 
+import com.autodetailflow.model.Appointment;
+import com.autodetailflow.service.AppointmentService;
 import com.autodetailflow.service.AvailabilityService;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -16,9 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AvailabilityController {
 
     private final AvailabilityService availabilityService;
+    private final AppointmentService appointmentService;
 
-    public AvailabilityController(AvailabilityService availabilityService) {
+    public AvailabilityController(
+            AvailabilityService availabilityService,
+            AppointmentService appointmentService) {
+
         this.availabilityService = availabilityService;
+        this.appointmentService = appointmentService;
     }
 
     @GetMapping
@@ -29,19 +37,14 @@ public class AvailabilityController {
         LocalDateTime openingTime = date.atTime(9, 0);
         LocalDateTime closingTime = date.atTime(17, 0);
 
-        // Temporary sample data until database integration.
-        List<LocalDateTime> existingStarts = new ArrayList<>();
-        List<Integer> existingDurations = new ArrayList<>();
+        List<Appointment> appointments =
+                appointmentService.getAllAppointments();
 
-        existingStarts.add(date.atTime(11, 0));
-        existingDurations.add(120);
-
-        return availabilityService.getAvailableTimes(
+        return availabilityService.getAvailableTimesForAppointments(
                 openingTime,
                 closingTime,
                 duration,
-                existingStarts,
-                existingDurations
+                appointments
         );
     }
 }

@@ -3,12 +3,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AutoDetail Flow - Availability</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>AutoDetail Flow - Booking</title>
+
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 600px;
+            max-width: 650px;
             margin: 40px auto;
             padding: 20px;
         }
@@ -17,37 +20,273 @@
             padding: 10px 15px;
             margin: 5px;
             cursor: pointer;
+            border-radius: 5px;
         }
 
         .time-slot {
             background-color: #e5f5e5;
             border: 1px solid #8ac78a;
+        }
+
+        .time-slot:hover {
+            background-color: #c8eac8;
+        }
+
+        .time-slot.selected {
+            background-color: #247a39;
+            color: white;
+            border: 2px solid #145522;
+        }
+
+        #selection,
+        #bookingForm,
+        #confirmation {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #ccc;
             border-radius: 5px;
+        }
+
+        .primary-button {
+            background-color: #247a39;
+            color: white;
+            border: none;
+        }
+
+        .primary-button:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+
+        #message {
+            margin-top: 15px;
+            color: #b00020;
+        }
+
+        #confirmation {
+            background-color: #e5f5e5;
+            border: 1px solid #8ac78a;
         }
     </style>
 </head>
+
 <body>
 
     <h1>AutoDetail Flow</h1>
-    <h2>View Available Appointment Times</h2>
+    <h2>Book a Detailing Appointment</h2>
+
+    <p>Service: Basic Detail</p>
+    <p>Price: $100.00</p>
+    <p>Duration: 2 hours</p>
 
     <label for="date">Select a date:</label>
     <input type="date" id="date">
 
-    <button onclick="loadAvailability()">
+    <button type="button" onclick="loadAvailability()">
         View Available Times
     </button>
 
     <h3>Available Times</h3>
     <div id="availableTimes"></div>
 
+    <div id="selection">
+        <h3>Selected Appointment</h3>
+
+        <p id="selectedDate"></p>
+        <p id="selectedTime"></p>
+
+        <button type="button"
+                class="primary-button"
+                onclick="continueBooking()">
+            Continue Booking
+        </button>
+    </div>
+
+    <div id="bookingForm">
+        <h2>Customer Information</h2>
+
+        <form id="appointmentForm">
+
+            <div class="form-group">
+                <label for="name">Full Name:</label>
+                <input type="text" id="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phoneNumber">Phone Number:</label>
+                <input type="tel" id="phoneNumber" required>
+            </div>
+
+            <h2>Vehicle Information</h2>
+
+            <div class="form-group">
+                <label for="year">Vehicle Year:</label>
+                <input type="number"
+                       id="year"
+                       min="1900"
+                       max="2100"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label for="make">Vehicle Make:</label>
+                <input type="text" id="make" required>
+            </div>
+
+            <div class="form-group">
+                <label for="model">Vehicle Model:</label>
+                <input type="text" id="model" required>
+            </div>
+
+            <div class="form-group">
+                <label for="type">Vehicle Type:</label>
+                <select id="type" required>
+                    <option value="">Select vehicle type</option>
+                    <option value="Sedan">Sedan</option>
+                    <option value="SUV">SUV</option>
+                    <option value="Truck">Truck</option>
+                    <option value="Van">Van</option>
+                    <option value="Coupe">Coupe</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <button type="submit"
+                    id="submitButton"
+                    class="primary-button">
+                Submit Appointment Request
+            </button>
+
+            <p id="message" role="alert"></p>
+        </form>
+    </div>
+
+    <div id="confirmation">
+        <h2>Appointment Request Submitted!</h2>
+
+        <p>Your appointment request is now Pending.</p>
+        <p>An employee will review your request.</p>
+
+        <p id="confirmationId"></p>
+        <p id="confirmationDate"></p>
+        <p id="confirmationTime"></p>
+
+        <button type="button"
+                onclick="startNewBooking()">
+            Book Another Appointment
+        </button>
+    </div>
+
     <script>
+        let selectedDateTime = null;
+        let availabilityRequestId = 0;
+
+        const dateInput =
+            document.getElementById("date");
+
+        const appointmentForm =
+            document.getElementById("appointmentForm");
+
+        function getToday() {
+            const today = new Date();
+
+            const year = today.getFullYear();
+
+            const month = String(
+                today.getMonth() + 1
+            ).padStart(2, "0");
+
+            const day = String(
+                today.getDate()
+            ).padStart(2, "0");
+
+            return year + "-" + month + "-" + day;
+        }
+
+        dateInput.min = getToday();
+
+        function formatTime(time) {
+            const hour = time.substring(11, 16);
+            const [hours, minutes] = hour.split(":");
+
+            const hour12 = Number(hours) % 12 || 12;
+
+            const ampm = Number(hours) >= 12
+                ? "PM"
+                : "AM";
+
+            return hour12 + ":" + minutes + " " + ampm;
+        }
+
+        function clearSelection() {
+            selectedDateTime = null;
+
+            document.getElementById(
+                "selection"
+            ).style.display = "none";
+
+            document.getElementById(
+                "bookingForm"
+            ).style.display = "none";
+
+            document.getElementById(
+                "message"
+            ).textContent = "";
+        }
+
+        dateInput.addEventListener("change", function() {
+            availabilityRequestId++;
+
+            clearSelection();
+
+            document.getElementById(
+                "availableTimes"
+            ).innerHTML = "";
+        });
+
         async function loadAvailability() {
-            const date = document.getElementById("date").value;
-            const container = document.getElementById("availableTimes");
+            const date = dateInput.value;
+
+            const container =
+                document.getElementById("availableTimes");
+
+            const requestId = ++availabilityRequestId;
+
+            clearSelection();
 
             if (!date) {
-                container.textContent = "Please select a date.";
+                container.textContent =
+                    "Please select a date.";
+                return;
+            }
+
+            if (date < getToday()) {
+                container.textContent =
+                    "Please select today or a future date.";
                 return;
             }
 
@@ -55,41 +294,240 @@
 
             try {
                 const response = await fetch(
-                    "/api/availability?date=" + date + "&duration=120"
+                    "/api/availability?date=" +
+                    encodeURIComponent(date) +
+                    "&duration=120"
                 );
 
                 if (!response.ok) {
-                    throw new Error("Unable to load availability");
+                    throw new Error(
+                        "Unable to load availability"
+                    );
                 }
 
                 const times = await response.json();
-                container.innerHTML = "";
 
-                if (times.length === 0) {
-                    container.textContent = "No available times.";
+                // Ignore an outdated request
+                if (requestId !== availabilityRequestId) {
                     return;
                 }
 
-                times.forEach(time => {
-                    const button = document.createElement("button");
+                container.innerHTML = "";
+
+                const now = new Date();
+
+                const futureTimes = times.filter(time => {
+                    return new Date(time) > now;
+                });
+
+                if (futureTimes.length === 0) {
+                    container.textContent =
+                        "No available times.";
+                    return;
+                }
+
+                futureTimes.forEach(time => {
+                    const button =
+                        document.createElement("button");
+
+                    button.type = "button";
                     button.className = "time-slot";
+                    button.textContent = formatTime(time);
 
-                    const hour = time.substring(11, 16);
-                    const [hours, minutes] = hour.split(":");
-                    const hour12 = Number(hours) % 12 || 12;
-                    const ampm = Number(hours) >= 12 ? "PM" : "AM";
+                    button.onclick = function() {
+                        document.querySelectorAll(
+                            ".time-slot"
+                        ).forEach(slot => {
+                            slot.classList.remove("selected");
+                        });
 
-                    button.textContent =
-                        hour12 + ":" + minutes + " " + ampm;
+                        button.classList.add("selected");
 
-                    button.disabled = true;
+                        selectedDateTime = time;
+
+                        document.getElementById(
+                            "selectedDate"
+                        ).textContent =
+                            "Date: " + date;
+
+                        document.getElementById(
+                            "selectedTime"
+                        ).textContent =
+                            "Time: " + formatTime(time);
+
+                        document.getElementById(
+                            "selection"
+                        ).style.display = "block";
+
+                        document.getElementById(
+                            "bookingForm"
+                        ).style.display = "none";
+                    };
+
                     container.appendChild(button);
                 });
 
             } catch (error) {
-                container.textContent =
-                    "Error loading available times.";
+                if (requestId === availabilityRequestId) {
+                    container.textContent =
+                        "Error loading available times.";
+                }
             }
+        }
+
+        function continueBooking() {
+            if (!selectedDateTime) {
+                alert("Please select an appointment time.");
+                return;
+            }
+
+            document.getElementById(
+                "bookingForm"
+            ).style.display = "block";
+
+            document.getElementById(
+                "bookingForm"
+            ).scrollIntoView({
+                behavior: "smooth"
+            });
+        }
+
+        appointmentForm.addEventListener(
+            "submit",
+            async function(event) {
+                event.preventDefault();
+
+                if (!selectedDateTime) {
+                    alert("Please select an appointment time.");
+                    return;
+                }
+
+                const submitButton =
+                    document.getElementById("submitButton");
+
+                const message =
+                    document.getElementById("message");
+
+                const bookedDateTime = selectedDateTime;
+
+                const request = {
+                    name: document.getElementById("name")
+                        .value.trim(),
+
+                    email: document.getElementById("email")
+                        .value.trim(),
+
+                    phoneNumber: document.getElementById(
+                        "phoneNumber"
+                    ).value.trim(),
+
+                    year: Number(
+                        document.getElementById("year").value
+                    ),
+
+                    make: document.getElementById("make")
+                        .value.trim(),
+
+                    model: document.getElementById("model")
+                        .value.trim(),
+
+                    type: document.getElementById("type")
+                        .value,
+
+                    packageId: 1,
+
+                    appointmentDateTime: bookedDateTime
+                };
+
+                submitButton.disabled = true;
+                message.textContent = "Submitting request...";
+
+                try {
+                    const response = await fetch(
+                        "/api/appointments",
+                        {
+                            method: "POST",
+
+                            headers: {
+                                "Content-Type": "application/json"
+                            },
+
+                            body: JSON.stringify(request)
+                        }
+                    );
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(
+                            result.message ||
+                            "Unable to submit appointment"
+                        );
+                    }
+
+                    document.getElementById(
+                        "confirmationId"
+                    ).textContent =
+                        "Appointment ID: " +
+                        result.appointmentId;
+
+                    document.getElementById(
+                        "confirmationDate"
+                    ).textContent =
+                        "Date: " +
+                        bookedDateTime.substring(0, 10);
+
+                    document.getElementById(
+                        "confirmationTime"
+                    ).textContent =
+                        "Time: " + formatTime(bookedDateTime);
+
+                    document.getElementById(
+                        "confirmation"
+                    ).style.display = "block";
+
+                    document.getElementById(
+                        "bookingForm"
+                    ).style.display = "none";
+
+                    document.getElementById(
+                        "selection"
+                    ).style.display = "none";
+
+                    document.getElementById(
+                        "availableTimes"
+                    ).innerHTML = "";
+
+                    appointmentForm.reset();
+                    selectedDateTime = null;
+
+                    document.getElementById(
+                        "confirmation"
+                    ).scrollIntoView({
+                        behavior: "smooth"
+                    });
+
+                } catch (error) {
+                    message.textContent = error.message;
+                } finally {
+                    submitButton.disabled = false;
+                }
+            }
+        );
+
+        function startNewBooking() {
+            document.getElementById(
+                "confirmation"
+            ).style.display = "none";
+
+            clearSelection();
+
+            loadAvailability();
+
+            window.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
         }
     </script>
 
