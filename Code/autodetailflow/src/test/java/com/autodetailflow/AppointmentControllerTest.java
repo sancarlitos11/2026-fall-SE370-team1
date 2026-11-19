@@ -3,6 +3,7 @@ package com.autodetailflow;
 
 import com.autodetailflow.controller.AppointmentController;
 import com.autodetailflow.controller.AppointmentController.BookingRequest;
+import com.autodetailflow.model.Appointment;
 import com.autodetailflow.service.AppointmentService;
 import com.autodetailflow.service.AvailabilityService;
 
@@ -12,7 +13,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 
 public class AppointmentControllerTest {
@@ -38,6 +41,11 @@ public class AppointmentControllerTest {
         return request;
     }
 
+    // Creates a future appointment date
+    private LocalDateTime futureDate(int hour) {
+        return LocalDate.now().plusDays(1).atTime(hour, 0);
+    }
+
     // Creates a controller and service for testing
     private AppointmentService appointmentService;
 
@@ -59,7 +67,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.of(2026, 12, 20, 11, 0)
+                futureDate(11)
         );
 
         ResponseEntity<Map<String, Object>> response =
@@ -88,7 +96,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest first = createBookingRequest(
-                LocalDateTime.of(2026, 12, 20, 11, 0)
+                futureDate(11)
         );
 
         ResponseEntity<Map<String, Object>> firstResponse =
@@ -100,7 +108,7 @@ public class AppointmentControllerTest {
         );
 
         BookingRequest second = createBookingRequest(
-                LocalDateTime.of(2026, 12, 20, 12, 0)
+                futureDate(12)
         );
 
         ResponseEntity<Map<String, Object>> secondResponse =
@@ -124,7 +132,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.of(2026, 12, 20, 11, 0)
+                futureDate(11)
         );
 
         request.setName("");
@@ -150,7 +158,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.of(2026, 12, 20, 11, 0)
+                futureDate(11)
         );
 
         request.setPackageId(99);
@@ -200,10 +208,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.now()
-                        .plusDays(1)
-                        .toLocalDate()
-                        .atTime(7, 0)
+                futureDate(7)
         );
 
         ResponseEntity<Map<String, Object>> response =
@@ -227,10 +232,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.now()
-                        .plusDays(1)
-                        .toLocalDate()
-                        .atTime(16, 0)
+                futureDate(16)
         );
 
         ResponseEntity<Map<String, Object>> response =
@@ -254,10 +256,7 @@ public class AppointmentControllerTest {
         AppointmentController controller = createController();
 
         BookingRequest request = createBookingRequest(
-                LocalDateTime.now()
-                        .plusDays(1)
-                        .toLocalDate()
-                        .atTime(15, 0)
+                futureDate(15)
         );
 
         ResponseEntity<Map<String, Object>> response =
@@ -278,5 +277,194 @@ public class AppointmentControllerTest {
                 appointmentService.getAllAppointments().size()
         );
     }
-}
 
+    // Test 9: Employee can retrieve an empty list
+    @Test
+    public void testGetAppointmentsWhenEmpty() {
+
+        AppointmentController controller = createController();
+
+        ResponseEntity<List<Appointment>> response =
+                controller.getAppointments();
+
+        assertEquals(
+                HttpStatus.OK,
+                response.getStatusCode()
+        );
+
+        assertNotNull(response.getBody());
+
+        assertTrue(response.getBody().isEmpty());
+    }
+
+    // Test 10: Employee can retrieve a submitted request
+    @Test
+    public void testGetSubmittedAppointment() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request = createBookingRequest(
+                futureDate(11)
+        );
+
+        ResponseEntity<Map<String, Object>> bookingResponse =
+                controller.createAppointment(request);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                bookingResponse.getStatusCode()
+        );
+
+        ResponseEntity<List<Appointment>> response =
+                controller.getAppointments();
+
+        assertEquals(
+                HttpStatus.OK,
+                response.getStatusCode()
+        );
+
+        assertNotNull(response.getBody());
+
+        assertEquals(1, response.getBody().size());
+
+        Appointment appointment = response.getBody().get(0);
+
+        assertEquals("Pending", appointment.getStatus());
+
+        assertEquals(
+                futureDate(11),
+                appointment.getAppointmentDateTime()
+        );
+    }
+
+    // Test 11: Employee can retrieve multiple requests
+    @Test
+    public void testGetMultipleAppointments() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest first = createBookingRequest(
+                futureDate(9)
+        );
+
+        BookingRequest second = createBookingRequest(
+                futureDate(13)
+        );
+
+        second.setName("Jane Smith");
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(first).getStatusCode()
+        );
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(second).getStatusCode()
+        );
+
+        ResponseEntity<List<Appointment>> response =
+                controller.getAppointments();
+
+        assertEquals(
+                HttpStatus.OK,
+                response.getStatusCode()
+        );
+
+        assertNotNull(response.getBody());
+
+        assertEquals(2, response.getBody().size());
+
+        assertEquals(
+                "Carlos Garcia",
+                response.getBody().get(0).getUser().getName()
+        );
+
+        assertEquals(
+                "Jane Smith",
+                response.getBody().get(1).getUser().getName()
+        );
+    }
+
+    // Test 12: Employee can view customer, vehicle,
+    // service, and appointment information
+    @Test
+    public void testAppointmentDetailsPreserved() {
+
+        AppointmentController controller = createController();
+
+        LocalDateTime requestedTime = futureDate(11);
+
+        BookingRequest request = createBookingRequest(
+                requestedTime
+        );
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(request).getStatusCode()
+        );
+
+        ResponseEntity<List<Appointment>> response =
+                controller.getAppointments();
+
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().size());
+
+        Appointment appointment = response.getBody().get(0);
+
+        // Customer information
+        assertEquals(
+                "Carlos Garcia",
+                appointment.getUser().getName()
+        );
+
+        assertEquals(
+                "carlos@example.com",
+                appointment.getUser().getEmail()
+        );
+
+        assertEquals(
+                "6195551234",
+                appointment.getUser().getPhoneNumber()
+        );
+
+        // Vehicle information
+        assertEquals(
+                2017,
+                appointment.getVehicle().getYear()
+        );
+
+        assertEquals(
+                "Nissan",
+                appointment.getVehicle().getMake()
+        );
+
+        assertEquals(
+                "Altima",
+                appointment.getVehicle().getModel()
+        );
+
+        assertEquals(
+                "Sedan",
+                appointment.getVehicle().getType()
+        );
+
+        // Selected detailing service
+        assertEquals(
+                "Basic Detail",
+                appointment.getDetailingPackage().getPackageName()
+        );
+
+        // Requested date and time
+        assertEquals(
+                requestedTime,
+                appointment.getAppointmentDateTime()
+        );
+
+        // New requests must be Pending
+        assertEquals(
+                "Pending",
+                appointment.getStatus()
+        );
+    }
+}

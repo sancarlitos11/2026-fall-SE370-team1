@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +29,16 @@ public class AppointmentController {
             AppointmentService appointmentService) {
 
         this.appointmentService = appointmentService;
+    }
+
+    // Returns all appointment requests for employees
+    @GetMapping
+    public ResponseEntity<List<Appointment>> getAppointments() {
+
+        List<Appointment> appointments =
+                appointmentService.getAllAppointments();
+
+        return ResponseEntity.ok(appointments);
     }
 
     // Receives a new appointment request
@@ -130,7 +141,7 @@ public class AppointmentController {
                     appointmentTime
             );
 
-            // Reject overlapping bookings
+            // AppointmentService rejects overlapping bookings
             appointmentService.addAppointment(appointment);
 
             response.put(
@@ -256,4 +267,3 @@ public class AppointmentController {
         }
     }
 }
-
