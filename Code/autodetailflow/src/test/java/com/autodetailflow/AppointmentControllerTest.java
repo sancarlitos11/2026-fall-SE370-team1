@@ -35,6 +35,11 @@ public class AppointmentControllerTest {
         request.setYear(2017);
         request.setType("Sedan");
 
+        // Address where mobile detailing will happen
+        request.setServiceAddress(
+                "123 Main Street, San Diego, CA 92101"
+        );
+
         request.setPackageId(1);
         request.setAppointmentDateTime(dateTime);
 

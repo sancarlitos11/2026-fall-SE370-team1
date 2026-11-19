@@ -93,7 +93,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1000px;
+            min-width: 1150px;
         }
 
         th, td {
@@ -152,6 +152,13 @@
             margin-top: 5px;
         }
 
+        .service-address {
+            min-width: 180px;
+            max-width: 260px;
+            overflow-wrap: anywhere;
+            line-height: 1.5;
+        }
+
         .notification {
             display: none;
             padding: 12px;
@@ -180,13 +187,16 @@
 
     <div class="toolbar">
         <h2>Customer Appointments</h2>
+
         <button onclick="loadAppointments()">
             Refresh Appointments
         </button>
     </div>
 
-    <div id="notification" class="notification"
-         role="status" aria-live="polite"></div>
+    <div id="notification"
+         class="notification"
+         role="status"
+         aria-live="polite"></div>
 
     <div class="table-container">
         <table>
@@ -196,6 +206,7 @@
                     <th>Customer</th>
                     <th>Vehicle</th>
                     <th>Service</th>
+                    <th>Service Address</th>
                     <th>Date</th>
                     <th>Time</th>
                     <th>Status</th>
@@ -205,7 +216,7 @@
 
             <tbody id="appointmentTable">
                 <tr>
-                    <td colspan="8" class="message">
+                    <td colspan="9" class="message">
                         Loading appointments...
                     </td>
                 </tr>
@@ -251,15 +262,14 @@
 
     // Displays success or error messages
     function showNotification(message, isError) {
-
         const notification =
-                document.getElementById("notification");
+            document.getElementById("notification");
 
         notification.textContent = message;
 
         notification.className = isError
-                ? "notification error-message"
-                : "notification success-message";
+            ? "notification error-message"
+            : "notification success-message";
 
         notification.style.display = "block";
     }
@@ -305,7 +315,6 @@
             await loadAppointments();
 
         } catch (error) {
-
             showNotification(error.message, true);
 
             buttons.forEach(button => {
@@ -317,14 +326,13 @@
     }
 
     async function loadAppointments() {
-
         const table = document.getElementById(
             "appointmentTable"
         );
 
         table.innerHTML = `
             <tr>
-                <td colspan="8" class="message">
+                <td colspan="9" class="message">
                     Loading appointments...
                 </td>
             </tr>
@@ -348,7 +356,7 @@
             if (appointments.length === 0) {
                 table.innerHTML = `
                     <tr>
-                        <td colspan="8" class="message">
+                        <td colspan="9" class="message">
                             No appointment requests found.
                         </td>
                     </tr>
@@ -360,11 +368,13 @@
             appointments.reverse();
 
             appointments.forEach(appointment => {
-
                 const customer = appointment.user || {};
                 const vehicle = appointment.vehicle || {};
                 const service =
                     appointment.detailingPackage || {};
+
+                const serviceAddress =
+                    appointment.serviceAddress || "Not provided";
 
                 const status = appointment.status || "Pending";
                 const statusClass = status.toLowerCase();
@@ -399,6 +409,10 @@
                         ${escapeHTML(service.packageName)}
                     </td>
 
+                    <td class="service-address">
+                        ${escapeHTML(serviceAddress)}
+                    </td>
+
                     <td>
                         ${escapeHTML(
                             formatDate(appointment.appointmentDateTime)
@@ -421,22 +435,21 @@
                 `;
 
                 const actionCell =
-                        row.querySelector(".action-cell");
+                    row.querySelector(".action-cell");
 
                 // Only pending appointments can be reviewed
                 if (status.toLowerCase() === "pending") {
-
                     const actions = document.createElement("div");
                     actions.className = "actions";
 
                     const confirmButton =
-                            document.createElement("button");
+                        document.createElement("button");
 
                     confirmButton.textContent = "Confirm";
                     confirmButton.className = "confirm-button";
 
                     const declineButton =
-                            document.createElement("button");
+                        document.createElement("button");
 
                     declineButton.textContent = "Decline";
                     declineButton.className = "decline-button";
@@ -475,10 +488,9 @@
             });
 
         } catch (error) {
-
             table.innerHTML = `
                 <tr>
-                    <td colspan="8" class="message">
+                    <td colspan="9" class="message">
                         Error loading appointments.
                         Make sure Spring Boot is running.
                     </td>

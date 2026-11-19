@@ -175,6 +175,25 @@
                 </select>
             </div>
 
+            <h2>Service Location</h2>
+
+            <p>
+                Enter the address where you want your
+                vehicle to be detailed.
+            </p>
+
+            <div class="form-group">
+                <label for="serviceAddress">
+                    Service Address:
+                </label>
+
+                <input type="text"
+                       id="serviceAddress"
+                       placeholder="Street address, city, state, ZIP code"
+                       autocomplete="street-address"
+                       required>
+            </div>
+
             <button type="submit"
                     id="submitButton"
                     class="primary-button">
@@ -194,6 +213,7 @@
         <p id="confirmationId"></p>
         <p id="confirmationDate"></p>
         <p id="confirmationTime"></p>
+        <p id="confirmationAddress"></p>
 
         <button type="button"
                 onclick="startNewBooking()">
@@ -410,6 +430,17 @@
 
                 const bookedDateTime = selectedDateTime;
 
+                const serviceAddress =
+                    document.getElementById(
+                        "serviceAddress"
+                    ).value.trim();
+
+                if (!serviceAddress) {
+                    message.textContent =
+                        "Please enter a service address.";
+                    return;
+                }
+
                 const request = {
                     name: document.getElementById("name")
                         .value.trim(),
@@ -433,6 +464,8 @@
 
                     type: document.getElementById("type")
                         .value,
+
+                    serviceAddress: serviceAddress,
 
                     packageId: 1,
 
@@ -481,6 +514,11 @@
                         "confirmationTime"
                     ).textContent =
                         "Time: " + formatTime(bookedDateTime);
+
+                    document.getElementById(
+                        "confirmationAddress"
+                    ).textContent =
+                        "Service Address: " + serviceAddress;
 
                     document.getElementById(
                         "confirmation"

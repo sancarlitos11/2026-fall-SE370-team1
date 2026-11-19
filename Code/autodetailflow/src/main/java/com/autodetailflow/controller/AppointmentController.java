@@ -73,7 +73,7 @@ public class AppointmentController {
 
             response.put("message", error.getMessage());
 
-            if (error.getMessage().equals("Appointment not found")) {
+            if ("Appointment not found".equals(error.getMessage())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(response);
             }
@@ -115,7 +115,7 @@ public class AppointmentController {
 
             response.put("message", error.getMessage());
 
-            if (error.getMessage().equals("Appointment not found")) {
+            if ("Appointment not found".equals(error.getMessage())) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(response);
             }
@@ -133,7 +133,7 @@ public class AppointmentController {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            // Validate customer information
+            // Validate customer, vehicle, and service address
             if (request == null ||
                     isBlank(request.getName()) ||
                     isBlank(request.getEmail()) ||
@@ -141,6 +141,7 @@ public class AppointmentController {
                     isBlank(request.getMake()) ||
                     isBlank(request.getModel()) ||
                     isBlank(request.getType()) ||
+                    isBlank(request.getServiceAddress()) ||
                     request.getYear() < 1900 ||
                     request.getAppointmentDateTime() == null) {
 
@@ -217,12 +218,14 @@ public class AppointmentController {
                     request.getType()
             );
 
+            // Create appointment with the service address
             Appointment appointment = new Appointment(
                     id,
                     customer,
                     vehicle,
                     detailingPackage,
-                    appointmentTime
+                    appointmentTime,
+                    request.getServiceAddress().trim()
             );
 
             // AppointmentService rejects overlapping bookings
@@ -241,6 +244,11 @@ public class AppointmentController {
             response.put(
                     "status",
                     appointment.getStatus()
+            );
+
+            response.put(
+                    "serviceAddress",
+                    appointment.getServiceAddress()
             );
 
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -270,6 +278,9 @@ public class AppointmentController {
         private String model;
         private int year;
         private String type;
+
+        // Location of the mobile detailing service
+        private String serviceAddress;
 
         private int packageId;
         private LocalDateTime appointmentDateTime;
@@ -333,6 +344,14 @@ public class AppointmentController {
             this.type = type;
         }
 
+        public String getServiceAddress() {
+            return serviceAddress;
+        }
+
+        public void setServiceAddress(String serviceAddress) {
+            this.serviceAddress = serviceAddress;
+        }
+
         public int getPackageId() {
             return packageId;
         }
@@ -347,6 +366,7 @@ public class AppointmentController {
 
         public void setAppointmentDateTime(
                 LocalDateTime appointmentDateTime) {
+
             this.appointmentDateTime = appointmentDateTime;
         }
     }
