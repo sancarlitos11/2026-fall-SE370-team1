@@ -81,6 +81,43 @@
             font-size: 13px;
         }
 
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            background-color: #e5e7eb;
+            color: #243447;
+            border: 1px solid #d1d5db;
+            font-weight: bold;
+        }
+
+        .tab-button:hover {
+            background-color: #d1d5db;
+        }
+
+        .tab-button.active {
+            background-color: #237a57;
+            color: white;
+            border-color: #237a57;
+        }
+
+        .tab-button.active:hover {
+            background-color: #185c40;
+        }
+
+        .count {
+            display: inline-block;
+            background-color: rgba(0, 0, 0, 0.10);
+            border-radius: 12px;
+            padding: 2px 7px;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+
         .table-container {
             background-color: white;
             border-radius: 10px;
@@ -128,7 +165,7 @@
             color: #155724;
         }
 
-        .cancelled, .declined {
+        .cancelled, .canceled, .declined {
             background-color: #f8d7da;
             color: #721c24;
         }
@@ -189,6 +226,18 @@
             background-color: #f8d7da;
             color: #721c24;
         }
+
+        .view-description {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .summary {
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 
@@ -197,7 +246,7 @@
 <div class="container">
 
     <h1>AutoDetail Flow</h1>
-    <p class="subtitle">Employee - Appointment Requests</p>
+    <p class="subtitle">Employee - Appointment Management</p>
 
     <div class="toolbar">
         <h2>Customer Appointments</h2>
@@ -211,6 +260,44 @@
          class="notification"
          role="status"
          aria-live="polite"></div>
+
+    <!-- Appointment navigation -->
+    <div class="tabs" role="group" aria-label="Appointment views">
+
+        <button
+            id="requestsTab"
+            class="tab-button active"
+            onclick="changeView('requests')"
+            aria-pressed="true">
+            Appointment Requests
+            <span id="requestsCount" class="count">0</span>
+        </button>
+
+        <button
+            id="upcomingTab"
+            class="tab-button"
+            onclick="changeView('upcoming')"
+            aria-pressed="false">
+            Upcoming Appointments
+            <span id="upcomingCount" class="count">0</span>
+        </button>
+
+        <button
+            id="allTab"
+            class="tab-button"
+            onclick="changeView('all')"
+            aria-pressed="false">
+            All Appointments
+            <span id="allCount" class="count">0</span>
+        </button>
+
+    </div>
+
+    <p id="viewDescription" class="view-description">
+        Review pending appointment requests and confirm or decline them.
+    </p>
+
+    <p id="appointmentSummary" class="summary"></p>
 
     <div class="table-container">
         <table>
@@ -241,6 +328,12 @@
 </div>
 
 <script>
+    // Stores appointments received from Spring Boot
+    let allAppointments = [];
+
+    // The employee starts on Appointment Requests
+    let currentView = "requests";
+
     // Safely display customer-provided text
     function escapeHTML(value) {
         return String(value ?? "").replace(
@@ -255,8 +348,23 @@
         );
     }
 
+    // Converts the appointment date into a JavaScript Date
+    function getAppointmentDate(appointment) {
+        const value = appointment.appointmentDateTime;
+
+        if (!value) {
+            return new Date(NaN);
+        }
+
+        return new Date(value);
+    }
+
     function formatDate(dateTime) {
         const date = new Date(dateTime);
+
+        if (isNaN(date.getTime())) {
+            return "Date unavailable";
+        }
 
         return date.toLocaleDateString("en-US", {
             year: "numeric",
@@ -268,14 +376,23 @@
     function formatTime(dateTime) {
         const date = new Date(dateTime);
 
+        if (isNaN(date.getTime())) {
+            return "Time unavailable";
+        }
+
         return date.toLocaleTimeString("en-US", {
             hour: "numeric",
             minute: "2-digit"
         });
     }
 
-    // Display the detailing package price
     function formatPrice(price) {
+        if (price === null ||
+                price === undefined ||
+                price === "") {
+            return "Price unavailable";
+        }
+
         const amount = Number(price);
 
         if (!Number.isFinite(amount)) {
@@ -285,7 +402,6 @@
         return "$" + amount.toFixed(2);
     }
 
-    // Display the package duration in hours/minutes
     function formatDuration(minutes) {
         const totalMinutes = Number(minutes);
 
@@ -322,6 +438,145 @@
         notification.style.display = "block";
     }
 
+    // Switches between the three appointment views
+    function changeView(view) {
+        currentView = view;
+
+        updateTabs();
+        displayAppointments();
+    }
+
+    // Updates the selected tab
+    function updateTabs() {
+        const tabs = {
+            requests: document.getElementById("requestsTab"),
+            upcoming: document.getElementById("upcomingTab"),
+            all: document.getElementById("allTab")
+        };
+
+        Object.keys(tabs).forEach(view => {
+            const selected = view === currentView;
+
+            tabs[view].classList.toggle("active", selected);
+            tabs[view].setAttribute(
+                "aria-pressed",
+                String(selected)
+            );
+        });
+
+        const description =
+            document.getElementById("viewDescription");
+
+        if (currentView === "requests") {
+            description.textContent =
+                "Review pending appointment requests and confirm or decline them.";
+        } else if (currentView === "upcoming") {
+            description.textContent =
+                "Confirmed upcoming jobs, sorted by date and time.";
+        } else {
+            description.textContent =
+                "View all appointment requests, including past and reviewed appointments.";
+        }
+    }
+
+    // Checks whether an appointment is pending
+    function isPending(appointment) {
+        return String(appointment.status || "")
+            .toLowerCase() === "pending";
+    }
+
+    // Checks whether an appointment is confirmed
+    function isConfirmed(appointment) {
+        return String(appointment.status || "")
+            .toLowerCase() === "confirmed";
+    }
+
+    // Checks whether an appointment is upcoming
+    function isUpcoming(appointment) {
+        if (!isConfirmed(appointment)) {
+            return false;
+        }
+
+        const appointmentDate =
+            getAppointmentDate(appointment);
+
+        if (isNaN(appointmentDate.getTime())) {
+            return false;
+        }
+
+        // Only confirmed appointments starting now or later
+        return appointmentDate.getTime() >= Date.now();
+    }
+
+    // Sorts appointments from earliest to latest
+    function sortByDateAscending(appointments) {
+        return appointments.sort((a, b) => {
+            return getAppointmentDate(a).getTime() -
+                getAppointmentDate(b).getTime();
+        });
+    }
+
+    // Sorts newest requests first
+    function sortByNewest(appointments) {
+        return appointments.sort((a, b) => {
+            return Number(b.appointmentId) -
+                Number(a.appointmentId);
+        });
+    }
+
+    // Updates the numbers shown on each tab
+    function updateCounts() {
+        const pendingCount =
+            allAppointments.filter(isPending).length;
+
+        const upcomingCount =
+            allAppointments.filter(isUpcoming).length;
+
+        document.getElementById("requestsCount").textContent =
+            pendingCount;
+
+        document.getElementById("upcomingCount").textContent =
+            upcomingCount;
+
+        document.getElementById("allCount").textContent =
+            allAppointments.length;
+    }
+
+    // Selects the appointments for the current view
+    function getFilteredAppointments() {
+        if (currentView === "requests") {
+            return sortByNewest(
+                allAppointments.filter(isPending)
+            );
+        }
+
+        if (currentView === "upcoming") {
+            return sortByDateAscending(
+                allAppointments.filter(isUpcoming)
+            );
+        }
+
+        return sortByNewest([...allAppointments]);
+    }
+
+    // Displays an empty-table message
+    function showEmptyMessage(message) {
+        const table =
+            document.getElementById("appointmentTable");
+
+        table.innerHTML = "";
+
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+
+        cell.colSpan = 9;
+        cell.className = "message";
+        cell.textContent = message;
+
+        row.appendChild(cell);
+        table.appendChild(row);
+    }
+
     // Sends confirm or decline request to Spring Boot
     async function updateAppointment(id, action, buttons) {
 
@@ -336,7 +591,6 @@
             }
         }
 
-        // Prevent repeated clicks while processing
         buttons.forEach(button => {
             button.disabled = true;
         });
@@ -353,13 +607,18 @@
 
             if (!response.ok) {
                 throw new Error(
-                    result.message || "Unable to update appointment"
+                    result.message ||
+                    "Unable to update appointment"
                 );
             }
 
-            showNotification(result.message, false);
+            showNotification(
+                result.message ||
+                "Appointment updated successfully",
+                false
+            );
 
-            // Refresh the table to show the new status
+            // Refresh the appointment list and tab counts
             await loadAppointments();
 
         } catch (error) {
@@ -373,23 +632,198 @@
         }
     }
 
-    async function loadAppointments() {
-        const table = document.getElementById(
-            "appointmentTable"
-        );
+    // Creates a table row for one appointment
+    function createAppointmentRow(appointment) {
+        const customer = appointment.user || {};
+        const vehicle = appointment.vehicle || {};
+        const service = appointment.detailingPackage || {};
 
-        table.innerHTML = `
-            <tr>
-                <td colspan="9" class="message">
-                    Loading appointments...
-                </td>
-            </tr>
+        const serviceAddress =
+            appointment.serviceAddress || "Not provided";
+
+        const status = appointment.status || "Pending";
+        const statusClass = status.toLowerCase();
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>
+                ${escapeHTML(appointment.appointmentId)}
+            </td>
+
+            <td>
+                <strong>${escapeHTML(customer.name)}</strong>
+                <div class="contact">
+                    ${escapeHTML(customer.email)}
+                </div>
+                <div class="contact">
+                    ${escapeHTML(customer.phoneNumber)}
+                </div>
+            </td>
+
+            <td>
+                ${escapeHTML(vehicle.year)}
+                ${escapeHTML(vehicle.make)}
+                ${escapeHTML(vehicle.model)}
+                <div class="contact">
+                    ${escapeHTML(vehicle.type)}
+                </div>
+            </td>
+
+            <td class="service-details">
+                <strong>
+                    ${escapeHTML(service.packageName)}
+                </strong>
+
+                <div class="service-price">
+                    ${escapeHTML(
+                        formatPrice(service.packagePrice)
+                    )}
+                </div>
+
+                <div class="service-duration">
+                    ${escapeHTML(
+                        formatDuration(service.packageDuration)
+                    )}
+                </div>
+            </td>
+
+            <td class="service-address">
+                ${escapeHTML(serviceAddress)}
+            </td>
+
+            <td>
+                ${escapeHTML(
+                    formatDate(appointment.appointmentDateTime)
+                )}
+            </td>
+
+            <td>
+                ${escapeHTML(
+                    formatTime(appointment.appointmentDateTime)
+                )}
+            </td>
+
+            <td>
+                <span class="status ${escapeHTML(statusClass)}">
+                    ${escapeHTML(status)}
+                </span>
+            </td>
+
+            <td class="action-cell"></td>
         `;
 
-        try {
-            const response = await fetch("/api/appointments", {
-                cache: "no-store"
+        const actionCell =
+            row.querySelector(".action-cell");
+
+        // Pending appointments can be confirmed or declined
+        if (isPending(appointment)) {
+            const actions = document.createElement("div");
+            actions.className = "actions";
+
+            const confirmButton =
+                document.createElement("button");
+
+            confirmButton.textContent = "Confirm";
+            confirmButton.className = "confirm-button";
+
+            const declineButton =
+                document.createElement("button");
+
+            declineButton.textContent = "Decline";
+            declineButton.className = "decline-button";
+
+            const buttons = [
+                confirmButton,
+                declineButton
+            ];
+
+            confirmButton.addEventListener("click", () => {
+                updateAppointment(
+                    appointment.appointmentId,
+                    "confirm",
+                    buttons
+                );
             });
+
+            declineButton.addEventListener("click", () => {
+                updateAppointment(
+                    appointment.appointmentId,
+                    "decline",
+                    buttons
+                );
+            });
+
+            actions.appendChild(confirmButton);
+            actions.appendChild(declineButton);
+
+            actionCell.appendChild(actions);
+
+        } else {
+            actionCell.textContent = "Reviewed";
+        }
+
+        return row;
+    }
+
+    // Displays appointments based on the selected tab
+    function displayAppointments() {
+        updateCounts();
+
+        const table =
+            document.getElementById("appointmentTable");
+
+        const summary =
+            document.getElementById("appointmentSummary");
+
+        const appointments = getFilteredAppointments();
+
+        summary.textContent =
+            "Showing " + appointments.length +
+            (appointments.length === 1
+                ? " appointment"
+                : " appointments");
+
+        table.innerHTML = "";
+
+        if (appointments.length === 0) {
+            if (currentView === "requests") {
+                showEmptyMessage(
+                    "No pending appointment requests."
+                );
+            } else if (currentView === "upcoming") {
+                showEmptyMessage(
+                    "No upcoming confirmed appointments."
+                );
+            } else {
+                showEmptyMessage(
+                    "No appointment requests found."
+                );
+            }
+
+            return;
+        }
+
+        appointments.forEach(appointment => {
+            const row = createAppointmentRow(appointment);
+            table.appendChild(row);
+        });
+    }
+
+    // Retrieves appointments from Spring Boot
+    async function loadAppointments() {
+        const table =
+            document.getElementById("appointmentTable");
+
+        showEmptyMessage("Loading appointments...");
+
+        try {
+            const response = await fetch(
+                "/api/appointments",
+                {
+                    cache: "no-store"
+                }
+            );
 
             if (!response.ok) {
                 throw new Error(
@@ -399,172 +833,38 @@
 
             const appointments = await response.json();
 
-            table.innerHTML = "";
-
-            if (appointments.length === 0) {
-                table.innerHTML = `
-                    <tr>
-                        <td colspan="9" class="message">
-                            No appointment requests found.
-                        </td>
-                    </tr>
-                `;
-                return;
+            if (!Array.isArray(appointments)) {
+                throw new Error(
+                    "Invalid appointment data received"
+                );
             }
 
-            // Show newest requests first
-            appointments.reverse();
+            allAppointments = appointments;
 
-            appointments.forEach(appointment => {
-                const customer = appointment.user || {};
-                const vehicle = appointment.vehicle || {};
-                const service =
-                    appointment.detailingPackage || {};
-
-                const serviceAddress =
-                    appointment.serviceAddress || "Not provided";
-
-                const status = appointment.status || "Pending";
-                const statusClass = status.toLowerCase();
-
-                const row = document.createElement("tr");
-
-                row.innerHTML = `
-                    <td>
-                        ${escapeHTML(appointment.appointmentId)}
-                    </td>
-
-                    <td>
-                        <strong>${escapeHTML(customer.name)}</strong>
-                        <div class="contact">
-                            ${escapeHTML(customer.email)}
-                        </div>
-                        <div class="contact">
-                            ${escapeHTML(customer.phoneNumber)}
-                        </div>
-                    </td>
-
-                    <td>
-                        ${escapeHTML(vehicle.year)}
-                        ${escapeHTML(vehicle.make)}
-                        ${escapeHTML(vehicle.model)}
-                        <div class="contact">
-                            ${escapeHTML(vehicle.type)}
-                        </div>
-                    </td>
-
-                    <td class="service-details">
-                        <strong>
-                            ${escapeHTML(service.packageName)}
-                        </strong>
-
-                        <div class="service-price">
-                            ${escapeHTML(
-                                formatPrice(service.packagePrice)
-                            )}
-                        </div>
-
-                        <div class="service-duration">
-                            ${escapeHTML(
-                                formatDuration(service.packageDuration)
-                            )}
-                        </div>
-                    </td>
-
-                    <td class="service-address">
-                        ${escapeHTML(serviceAddress)}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(
-                            formatDate(appointment.appointmentDateTime)
-                        )}
-                    </td>
-
-                    <td>
-                        ${escapeHTML(
-                            formatTime(appointment.appointmentDateTime)
-                        )}
-                    </td>
-
-                    <td>
-                        <span class="status ${escapeHTML(statusClass)}">
-                            ${escapeHTML(status)}
-                        </span>
-                    </td>
-
-                    <td class="action-cell"></td>
-                `;
-
-                const actionCell =
-                    row.querySelector(".action-cell");
-
-                // Only pending appointments can be reviewed
-                if (status.toLowerCase() === "pending") {
-                    const actions = document.createElement("div");
-                    actions.className = "actions";
-
-                    const confirmButton =
-                        document.createElement("button");
-
-                    confirmButton.textContent = "Confirm";
-                    confirmButton.className = "confirm-button";
-
-                    const declineButton =
-                        document.createElement("button");
-
-                    declineButton.textContent = "Decline";
-                    declineButton.className = "decline-button";
-
-                    const buttons = [
-                        confirmButton,
-                        declineButton
-                    ];
-
-                    confirmButton.addEventListener("click", () => {
-                        updateAppointment(
-                            appointment.appointmentId,
-                            "confirm",
-                            buttons
-                        );
-                    });
-
-                    declineButton.addEventListener("click", () => {
-                        updateAppointment(
-                            appointment.appointmentId,
-                            "decline",
-                            buttons
-                        );
-                    });
-
-                    actions.appendChild(confirmButton);
-                    actions.appendChild(declineButton);
-
-                    actionCell.appendChild(actions);
-
-                } else {
-                    actionCell.textContent = "Reviewed";
-                }
-
-                table.appendChild(row);
-            });
+            updateTabs();
+            displayAppointments();
 
         } catch (error) {
-            table.innerHTML = `
-                <tr>
-                    <td colspan="9" class="message">
-                        Error loading appointments.
-                        Make sure Spring Boot is running.
-                    </td>
-                </tr>
-            `;
+            allAppointments = [];
+
+            updateCounts();
+
+            document.getElementById(
+                "appointmentSummary"
+            ).textContent = "";
+
+            showEmptyMessage(
+                "Error loading appointments. " +
+                "Make sure Spring Boot is running."
+            );
 
             console.error(error);
         }
     }
 
-    // Load appointments when the page opens
+    // Load appointments when the employee page opens
     loadAppointments();
+
 </script>
 
 </body>
