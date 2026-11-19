@@ -51,6 +51,38 @@
             background-color: #185c40;
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .confirm-button {
+            background-color: #237a57;
+        }
+
+        .confirm-button:hover {
+            background-color: #185c40;
+        }
+
+        .decline-button {
+            background-color: #c0392b;
+        }
+
+        .decline-button:hover {
+            background-color: #922b21;
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .actions button {
+            padding: 8px 12px;
+            font-size: 13px;
+        }
+
         .table-container {
             background-color: white;
             border-radius: 10px;
@@ -61,7 +93,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 900px;
+            min-width: 1000px;
         }
 
         th, td {
@@ -119,6 +151,23 @@
             color: #555;
             margin-top: 5px;
         }
+
+        .notification {
+            display: none;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .error-message {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 
@@ -136,6 +185,9 @@
         </button>
     </div>
 
+    <div id="notification" class="notification"
+         role="status" aria-live="polite"></div>
+
     <div class="table-container">
         <table>
             <thead>
@@ -147,12 +199,13 @@
                     <th>Date</th>
                     <th>Time</th>
                     <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody id="appointmentTable">
                 <tr>
-                    <td colspan="7" class="message">
+                    <td colspan="8" class="message">
                         Loading appointments...
                     </td>
                 </tr>
@@ -196,6 +249,73 @@
         });
     }
 
+    // Displays success or error messages
+    function showNotification(message, isError) {
+
+        const notification =
+                document.getElementById("notification");
+
+        notification.textContent = message;
+
+        notification.className = isError
+                ? "notification error-message"
+                : "notification success-message";
+
+        notification.style.display = "block";
+    }
+
+    // Sends confirm or decline request to Spring Boot
+    async function updateAppointment(id, action, buttons) {
+
+        if (action === "decline") {
+            const approved = confirm(
+                "Are you sure you want to decline appointment #" +
+                id + "?"
+            );
+
+            if (!approved) {
+                return;
+            }
+        }
+
+        // Prevent repeated clicks while processing
+        buttons.forEach(button => {
+            button.disabled = true;
+        });
+
+        try {
+            const response = await fetch(
+                "/api/appointments/" + id + "/" + action,
+                {
+                    method: "PATCH"
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(
+                    result.message || "Unable to update appointment"
+                );
+            }
+
+            showNotification(result.message, false);
+
+            // Refresh the table to show the new status
+            await loadAppointments();
+
+        } catch (error) {
+
+            showNotification(error.message, true);
+
+            buttons.forEach(button => {
+                button.disabled = false;
+            });
+
+            console.error(error);
+        }
+    }
+
     async function loadAppointments() {
 
         const table = document.getElementById(
@@ -204,7 +324,7 @@
 
         table.innerHTML = `
             <tr>
-                <td colspan="7" class="message">
+                <td colspan="8" class="message">
                     Loading appointments...
                 </td>
             </tr>
@@ -228,7 +348,7 @@
             if (appointments.length === 0) {
                 table.innerHTML = `
                     <tr>
-                        <td colspan="7" class="message">
+                        <td colspan="8" class="message">
                             No appointment requests found.
                         </td>
                     </tr>
@@ -247,7 +367,6 @@
                     appointment.detailingPackage || {};
 
                 const status = appointment.status || "Pending";
-
                 const statusClass = status.toLowerCase();
 
                 const row = document.createElement("tr");
@@ -297,7 +416,60 @@
                             ${escapeHTML(status)}
                         </span>
                     </td>
+
+                    <td class="action-cell"></td>
                 `;
+
+                const actionCell =
+                        row.querySelector(".action-cell");
+
+                // Only pending appointments can be reviewed
+                if (status.toLowerCase() === "pending") {
+
+                    const actions = document.createElement("div");
+                    actions.className = "actions";
+
+                    const confirmButton =
+                            document.createElement("button");
+
+                    confirmButton.textContent = "Confirm";
+                    confirmButton.className = "confirm-button";
+
+                    const declineButton =
+                            document.createElement("button");
+
+                    declineButton.textContent = "Decline";
+                    declineButton.className = "decline-button";
+
+                    const buttons = [
+                        confirmButton,
+                        declineButton
+                    ];
+
+                    confirmButton.addEventListener("click", () => {
+                        updateAppointment(
+                            appointment.appointmentId,
+                            "confirm",
+                            buttons
+                        );
+                    });
+
+                    declineButton.addEventListener("click", () => {
+                        updateAppointment(
+                            appointment.appointmentId,
+                            "decline",
+                            buttons
+                        );
+                    });
+
+                    actions.appendChild(confirmButton);
+                    actions.appendChild(declineButton);
+
+                    actionCell.appendChild(actions);
+
+                } else {
+                    actionCell.textContent = "Reviewed";
+                }
 
                 table.appendChild(row);
             });
@@ -306,7 +478,7 @@
 
             table.innerHTML = `
                 <tr>
-                    <td colspan="7" class="message">
+                    <td colspan="8" class="message">
                         Error loading appointments.
                         Make sure Spring Boot is running.
                     </td>

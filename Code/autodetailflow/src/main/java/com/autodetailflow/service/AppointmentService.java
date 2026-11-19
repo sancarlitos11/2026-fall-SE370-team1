@@ -15,17 +15,20 @@ public class AppointmentService {
 
     private final AvailabilityService availabilityService;
 
-    public AppointmentService(AvailabilityService availabilityService) {
+    public AppointmentService(
+            AvailabilityService availabilityService) {
+
         this.availabilityService = availabilityService;
     }
 
     // Returns all appointments
-    public List<Appointment> getAllAppointments() {
+    public synchronized List<Appointment> getAllAppointments() {
         return new ArrayList<>(appointments);
     }
 
     // Adds a new appointment if the time is available
-    public synchronized void addAppointment(Appointment appointment) {
+    public synchronized void addAppointment(
+            Appointment appointment) {
 
         if (appointment == null ||
                 appointment.getAppointmentDateTime() == null ||
@@ -40,7 +43,8 @@ public class AppointmentService {
                 appointment.getAppointmentDateTime();
 
         int requestedDuration =
-                appointment.getDetailingPackage().getPackageDuration();
+                appointment.getDetailingPackage()
+                        .getPackageDuration();
 
         if (requestedDuration <= 0) {
             throw new IllegalArgumentException(
@@ -82,5 +86,61 @@ public class AppointmentService {
         }
 
         appointments.add(appointment);
+    }
+
+    // Finds an appointment using its ID
+    public synchronized Appointment getAppointmentById(
+            int appointmentId) {
+
+        for (Appointment appointment : appointments) {
+
+            if (appointment.getAppointmentId() == appointmentId) {
+                return appointment;
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Appointment not found"
+        );
+    }
+
+    // Confirms a pending appointment request
+    public synchronized Appointment confirmAppointment(
+            int appointmentId) {
+
+        Appointment appointment =
+                getAppointmentById(appointmentId);
+
+        // Only pending appointments can be confirmed
+        if (!appointment.getStatus().equalsIgnoreCase("Pending")) {
+
+            throw new IllegalArgumentException(
+                    "Only pending appointments can be confirmed"
+            );
+        }
+
+        appointment.setStatus("Confirmed");
+
+        return appointment;
+    }
+
+    // Declines a pending appointment request
+    public synchronized Appointment declineAppointment(
+            int appointmentId) {
+
+        Appointment appointment =
+                getAppointmentById(appointmentId);
+
+        // Only pending appointments can be declined
+        if (!appointment.getStatus().equalsIgnoreCase("Pending")) {
+
+            throw new IllegalArgumentException(
+                    "Only pending appointments can be declined"
+            );
+        }
+
+        appointment.setStatus("Declined");
+
+        return appointment;
     }
 }

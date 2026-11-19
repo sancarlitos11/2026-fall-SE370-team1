@@ -41,6 +41,90 @@ public class AppointmentController {
         return ResponseEntity.ok(appointments);
     }
 
+    // Confirms a pending appointment request
+    @PatchMapping("/{id}/confirm")
+    public ResponseEntity<Map<String, Object>> confirmAppointment(
+            @PathVariable int id) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Appointment appointment =
+                    appointmentService.confirmAppointment(id);
+
+            response.put(
+                    "message",
+                    "Appointment confirmed successfully"
+            );
+
+            response.put(
+                    "appointmentId",
+                    appointment.getAppointmentId()
+            );
+
+            response.put(
+                    "status",
+                    appointment.getStatus()
+            );
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException error) {
+
+            response.put("message", error.getMessage());
+
+            if (error.getMessage().equals("Appointment not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(response);
+            }
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(response);
+        }
+    }
+
+    // Declines a pending appointment request
+    @PatchMapping("/{id}/decline")
+    public ResponseEntity<Map<String, Object>> declineAppointment(
+            @PathVariable int id) {
+
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            Appointment appointment =
+                    appointmentService.declineAppointment(id);
+
+            response.put(
+                    "message",
+                    "Appointment declined successfully"
+            );
+
+            response.put(
+                    "appointmentId",
+                    appointment.getAppointmentId()
+            );
+
+            response.put(
+                    "status",
+                    appointment.getStatus()
+            );
+
+            return ResponseEntity.ok(response);
+
+        } catch (IllegalArgumentException error) {
+
+            response.put("message", error.getMessage());
+
+            if (error.getMessage().equals("Appointment not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(response);
+            }
+
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(response);
+        }
+    }
+
     // Receives a new appointment request
     @PostMapping
     public ResponseEntity<Map<String, Object>> createAppointment(

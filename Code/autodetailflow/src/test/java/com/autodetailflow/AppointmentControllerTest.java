@@ -386,8 +386,7 @@ public class AppointmentControllerTest {
         );
     }
 
-    // Test 12: Employee can view customer, vehicle,
-    // service, and appointment information
+    // Test 12: Employee can view all appointment details
     @Test
     public void testAppointmentDetailsPreserved() {
 
@@ -412,7 +411,6 @@ public class AppointmentControllerTest {
 
         Appointment appointment = response.getBody().get(0);
 
-        // Customer information
         assertEquals(
                 "Carlos Garcia",
                 appointment.getUser().getName()
@@ -428,7 +426,6 @@ public class AppointmentControllerTest {
                 appointment.getUser().getPhoneNumber()
         );
 
-        // Vehicle information
         assertEquals(
                 2017,
                 appointment.getVehicle().getYear()
@@ -449,22 +446,254 @@ public class AppointmentControllerTest {
                 appointment.getVehicle().getType()
         );
 
-        // Selected detailing service
         assertEquals(
                 "Basic Detail",
                 appointment.getDetailingPackage().getPackageName()
         );
 
-        // Requested date and time
         assertEquals(
                 requestedTime,
                 appointment.getAppointmentDateTime()
         );
 
-        // New requests must be Pending
         assertEquals(
                 "Pending",
                 appointment.getStatus()
+        );
+    }
+
+    // Test 13: Employee confirms a pending appointment
+    @Test
+    public void testConfirmAppointment() {
+
+        AppointmentController controller = createController();
+
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
+        );
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.confirmAppointment(1);
+
+        assertEquals(
+                HttpStatus.OK,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Confirmed",
+                response.getBody().get("status")
+        );
+
+        assertEquals(
+                "Confirmed",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+    }
+
+    // Test 14: Employee declines a pending appointment
+    @Test
+    public void testDeclineAppointment() {
+
+        AppointmentController controller = createController();
+
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
+        );
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.declineAppointment(1);
+
+        assertEquals(
+                HttpStatus.OK,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Declined",
+                response.getBody().get("status")
+        );
+
+        assertEquals(
+                "Declined",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+    }
+
+    // Test 15: Cannot confirm an already confirmed appointment
+    @Test
+    public void testCannotConfirmTwice() {
+
+        AppointmentController controller = createController();
+
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
+        );
+
+        controller.confirmAppointment(1);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.confirmAppointment(1);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Confirmed",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+    }
+
+    // Test 16: Cannot decline an already confirmed appointment
+    @Test
+    public void testCannotDeclineConfirmedAppointment() {
+
+        AppointmentController controller = createController();
+
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
+        );
+
+        controller.confirmAppointment(1);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.declineAppointment(1);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Confirmed",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+    }
+
+    // Test 17: Cannot confirm an already declined appointment
+    @Test
+    public void testCannotConfirmDeclinedAppointment() {
+
+        AppointmentController controller = createController();
+
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
+        );
+
+        controller.declineAppointment(1);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.confirmAppointment(1);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Declined",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+    }
+
+    // Test 18: Cannot confirm an appointment that does not exist
+    @Test
+    public void testConfirmNonexistentAppointment() {
+
+        AppointmentController controller = createController();
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.confirmAppointment(999);
+
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Appointment not found",
+                response.getBody().get("message")
+        );
+    }
+
+    // Test 19: Cannot decline an appointment that does not exist
+    @Test
+    public void testDeclineNonexistentAppointment() {
+
+        AppointmentController controller = createController();
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.declineAppointment(999);
+
+        assertEquals(
+                HttpStatus.NOT_FOUND,
+                response.getStatusCode()
+        );
+
+        assertEquals(
+                "Appointment not found",
+                response.getBody().get("message")
+        );
+    }
+
+    // Test 20: Declining releases the appointment time
+    @Test
+    public void testDecliningReleasesTimeSlot() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest first = createBookingRequest(
+                futureDate(11)
+        );
+
+        ResponseEntity<Map<String, Object>> firstResponse =
+                controller.createAppointment(first);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                firstResponse.getStatusCode()
+        );
+
+        // Decline the first appointment
+        ResponseEntity<Map<String, Object>> declineResponse =
+                controller.declineAppointment(1);
+
+        assertEquals(
+                HttpStatus.OK,
+                declineResponse.getStatusCode()
+        );
+
+        // Another customer requests the same time
+        BookingRequest second = createBookingRequest(
+                futureDate(11)
+        );
+
+        second.setName("Jane Smith");
+        second.setEmail("jane@example.com");
+
+        ResponseEntity<Map<String, Object>> secondResponse =
+                controller.createAppointment(second);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                secondResponse.getStatusCode()
+        );
+
+        assertEquals(
+                2,
+                appointmentService.getAllAppointments().size()
+        );
+
+        assertEquals(
+                "Declined",
+                appointmentService.getAppointmentById(1).getStatus()
+        );
+
+        assertEquals(
+                "Pending",
+                appointmentService.getAppointmentById(2).getStatus()
         );
     }
 }
