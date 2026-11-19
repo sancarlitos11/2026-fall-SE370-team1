@@ -3,88 +3,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutoDetail Flow - Booking</title>
 
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
-            max-width: 650px;
-            margin: 40px auto;
+            max-width: 750px;
+            margin: 30px auto;
             padding: 20px;
+            color: #222;
         }
 
-        button {
-            padding: 10px 15px;
-            margin: 5px;
-            cursor: pointer;
-            border-radius: 5px;
+        h1 {
+            color: #247a39;
         }
 
-        .time-slot {
-            background-color: #e5f5e5;
-            border: 1px solid #8ac78a;
-        }
-
-        .time-slot:hover {
-            background-color: #c8eac8;
-        }
-
-        .time-slot.selected {
-            background-color: #247a39;
-            color: white;
-            border: 2px solid #145522;
-        }
-
-        #selection,
-        #bookingForm,
-        #confirmation {
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #f0f0f0;
+        .section {
+            background: #f5f5f5;
             border-radius: 8px;
-            display: none;
+            padding: 20px;
+            margin-top: 20px;
         }
 
         .form-group {
             margin-bottom: 15px;
         }
 
-        .form-group label {
+        label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
+            font-weight: bold;
         }
 
-        .form-group input,
-        .form-group select {
+        input, select {
             width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
+            padding: 11px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 11px 16px;
+            margin: 5px 5px 5px 0;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 15px;
         }
 
         .primary-button {
-            background-color: #247a39;
+            background: #247a39;
             color: white;
             border: none;
         }
 
         .primary-button:disabled {
-            background-color: #999;
+            background: #999;
             cursor: not-allowed;
         }
 
-        #message {
+        .time-slot {
+            background: #e5f5e5;
+            border: 1px solid #8ac78a;
+        }
+
+        .time-slot:hover {
+            background: #c8eac8;
+        }
+
+        .time-slot.selected {
+            background: #247a39;
+            color: white;
+            border: 2px solid #145522;
+        }
+
+        .summary {
+            background: #e5f5e5;
+            padding: 15px;
+            border-radius: 6px;
             margin-top: 15px;
+        }
+
+        .price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #247a39;
+        }
+
+        .hint {
+            color: #555;
+            font-size: 14px;
+        }
+
+        .error {
             color: #b00020;
+            margin-top: 12px;
+        }
+
+        #selection,
+        #bookingForm,
+        #confirmation,
+        #manualModelGroup {
+            display: none;
         }
 
         #confirmation {
-            background-color: #e5f5e5;
+            background: #e5f5e5;
             border: 1px solid #8ac78a;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                margin: 0 auto;
+                padding: 15px;
+            }
+
+            .section {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -94,35 +135,115 @@
     <h1>AutoDetail Flow</h1>
     <h2>Book a Detailing Appointment</h2>
 
-    <p>Service: Basic Detail</p>
-    <p>Price: $100.00</p>
-    <p>Duration: 2 hours</p>
+    <div class="section">
+        <h2>1. Vehicle Information</h2>
 
-    <label for="date">Select a date:</label>
-    <input type="date" id="date">
+        <div class="form-group">
+            <label for="year">Vehicle Year:</label>
+            <select id="year" required>
+                <option value="">Select year</option>
+            </select>
+        </div>
 
-    <button type="button" onclick="loadAvailability()">
-        View Available Times
-    </button>
+        <div class="form-group">
+            <label for="make">Vehicle Make:</label>
+            <select id="make" required>
+                <option value="">Select make</option>
+            </select>
+        </div>
 
-    <h3>Available Times</h3>
-    <div id="availableTimes"></div>
+        <div class="form-group">
+            <label for="model">Vehicle Model:</label>
+            <select id="model" required disabled>
+                <option value="">Select model</option>
+            </select>
+        </div>
 
-    <div id="selection">
-        <h3>Selected Appointment</h3>
+        <div class="form-group" id="manualModelGroup">
+            <label for="manualModel">Enter Vehicle Model:</label>
+            <input type="text" id="manualModel"
+                   placeholder="Enter your vehicle model">
+        </div>
 
-        <p id="selectedDate"></p>
-        <p id="selectedTime"></p>
+        <div class="form-group">
+            <label for="type">Vehicle Type:</label>
+            <select id="type" required>
+                <option value="">Select vehicle type</option>
+                <option value="Coupe">Coupe</option>
+                <option value="Sedan">Sedan</option>
+                <option value="Small SUV">Small SUV</option>
+                <option value="Large SUV">Large SUV</option>
+                <option value="Truck">Truck</option>
+                <option value="Van">Van</option>
+            </select>
+
+            <p class="hint">
+                We automatically identify your vehicle type
+                when possible. Please verify it before booking.
+            </p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>2. Select Detailing Service</h2>
+
+        <div class="form-group">
+            <label for="packageId">Detailing Package:</label>
+
+            <select id="packageId" required>
+                <option value="">Select a detailing package</option>
+                <option value="1">Ceramic Package</option>
+                <option value="2">Full Interior</option>
+                <option value="3">Full Exterior</option>
+                <option value="4">Elite Package - Most Popular</option>
+                <option value="5">Premium Package</option>
+                <option value="6">Deluxe Package</option>
+            </select>
+        </div>
+
+        <div class="summary">
+            <h3 id="packageName">Select a package</h3>
+            <p id="packageDescription"></p>
+            <p id="packageDuration"></p>
+            <p id="packagePrice" class="price"></p>
+            <p id="packageMessage" class="error"></p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. Select Appointment Date</h2>
+
+        <div class="form-group">
+            <label for="date">Appointment Date:</label>
+            <input type="date" id="date">
+        </div>
 
         <button type="button"
                 class="primary-button"
-                onclick="continueBooking()">
-            Continue Booking
+                onclick="loadAvailability()">
+            View Available Times
         </button>
+
+        <h3>Available Times</h3>
+        <div id="availableTimes"></div>
+
+        <div id="selection" class="summary">
+            <h3>Selected Appointment</h3>
+            <p id="selectedDate"></p>
+            <p id="selectedTime"></p>
+            <p id="selectedPackage"></p>
+            <p id="selectedPrice"></p>
+
+            <button type="button"
+                    class="primary-button"
+                    onclick="continueBooking()">
+                Continue Booking
+            </button>
+        </div>
     </div>
 
-    <div id="bookingForm">
-        <h2>Customer Information</h2>
+    <div id="bookingForm" class="section">
+        <h2>4. Customer Information</h2>
 
         <form id="appointmentForm">
 
@@ -139,40 +260,6 @@
             <div class="form-group">
                 <label for="phoneNumber">Phone Number:</label>
                 <input type="tel" id="phoneNumber" required>
-            </div>
-
-            <h2>Vehicle Information</h2>
-
-            <div class="form-group">
-                <label for="year">Vehicle Year:</label>
-                <input type="number"
-                       id="year"
-                       min="1900"
-                       max="2100"
-                       required>
-            </div>
-
-            <div class="form-group">
-                <label for="make">Vehicle Make:</label>
-                <input type="text" id="make" required>
-            </div>
-
-            <div class="form-group">
-                <label for="model">Vehicle Model:</label>
-                <input type="text" id="model" required>
-            </div>
-
-            <div class="form-group">
-                <label for="type">Vehicle Type:</label>
-                <select id="type" required>
-                    <option value="">Select vehicle type</option>
-                    <option value="Sedan">Sedan</option>
-                    <option value="SUV">SUV</option>
-                    <option value="Truck">Truck</option>
-                    <option value="Van">Van</option>
-                    <option value="Coupe">Coupe</option>
-                    <option value="Other">Other</option>
-                </select>
             </div>
 
             <h2>Service Location</h2>
@@ -200,46 +287,286 @@
                 Submit Appointment Request
             </button>
 
-            <p id="message" role="alert"></p>
+            <p id="message" class="error" role="alert"></p>
         </form>
     </div>
 
-    <div id="confirmation">
+    <div id="confirmation" class="section">
         <h2>Appointment Request Submitted!</h2>
 
         <p>Your appointment request is now Pending.</p>
         <p>An employee will review your request.</p>
 
         <p id="confirmationId"></p>
+        <p id="confirmationPackage"></p>
+        <p id="confirmationPrice"></p>
         <p id="confirmationDate"></p>
         <p id="confirmationTime"></p>
         <p id="confirmationAddress"></p>
 
-        <button type="button"
-                onclick="startNewBooking()">
+        <button type="button" onclick="startNewBooking()">
             Book Another Appointment
         </button>
     </div>
 
     <script>
+        // Vehicle catalog for automatic classification.
+        // Customers can enter an unlisted model manually.
+
+        const vehicles = {
+            "Acura": {
+                "Integra": "Sedan",
+                "TLX": "Sedan",
+                "RDX": "Small SUV",
+                "MDX": "Large SUV"
+            },
+            "BMW": {
+                "2 Series": "Coupe",
+                "3 Series": "Sedan",
+                "4 Series": "Coupe",
+                "5 Series": "Sedan",
+                "X1": "Small SUV",
+                "X3": "Small SUV",
+                "X5": "Large SUV",
+                "X7": "Large SUV"
+            },
+            "Chevrolet": {
+                "Malibu": "Sedan",
+                "Camaro": "Coupe",
+                "Corvette": "Coupe",
+                "Trax": "Small SUV",
+                "Equinox": "Small SUV",
+                "Blazer": "Small SUV",
+                "Traverse": "Large SUV",
+                "Tahoe": "Large SUV",
+                "Suburban": "Large SUV",
+                "Colorado": "Truck",
+                "Silverado": "Truck"
+            },
+            "Dodge": {
+                "Charger": "Sedan",
+                "Challenger": "Coupe",
+                "Durango": "Large SUV",
+                "Grand Caravan": "Van"
+            },
+            "Ford": {
+                "Mustang": "Coupe",
+                "Escape": "Small SUV",
+                "Bronco Sport": "Small SUV",
+                "Bronco": "Large SUV",
+                "Explorer": "Large SUV",
+                "Expedition": "Large SUV",
+                "Maverick": "Truck",
+                "Ranger": "Truck",
+                "F-150": "Truck",
+                "F-250": "Truck",
+                "Transit": "Van"
+            },
+            "Honda": {
+                "Civic": "Sedan",
+                "Accord": "Sedan",
+                "HR-V": "Small SUV",
+                "CR-V": "Small SUV",
+                "Passport": "Large SUV",
+                "Pilot": "Large SUV",
+                "Ridgeline": "Truck",
+                "Odyssey": "Van"
+            },
+            "Hyundai": {
+                "Elantra": "Sedan",
+                "Sonata": "Sedan",
+                "Venue": "Small SUV",
+                "Kona": "Small SUV",
+                "Tucson": "Small SUV",
+                "Santa Fe": "Large SUV",
+                "Palisade": "Large SUV",
+                "Santa Cruz": "Truck"
+            },
+            "Jeep": {
+                "Compass": "Small SUV",
+                "Cherokee": "Small SUV",
+                "Grand Cherokee": "Large SUV",
+                "Wrangler": "Large SUV",
+                "Wagoneer": "Large SUV",
+                "Gladiator": "Truck"
+            },
+            "Kia": {
+                "Forte": "Sedan",
+                "K4": "Sedan",
+                "K5": "Sedan",
+                "Seltos": "Small SUV",
+                "Sportage": "Small SUV",
+                "Sorento": "Large SUV",
+                "Telluride": "Large SUV",
+                "Carnival": "Van"
+            },
+            "Lexus": {
+                "IS": "Sedan",
+                "ES": "Sedan",
+                "RC": "Coupe",
+                "UX": "Small SUV",
+                "NX": "Small SUV",
+                "RX": "Large SUV",
+                "GX": "Large SUV",
+                "LX": "Large SUV"
+            },
+            "Mazda": {
+                "Mazda3": "Sedan",
+                "Mazda6": "Sedan",
+                "MX-5 Miata": "Coupe",
+                "CX-30": "Small SUV",
+                "CX-5": "Small SUV",
+                "CX-50": "Small SUV",
+                "CX-9": "Large SUV",
+                "CX-90": "Large SUV"
+            },
+            "Mercedes-Benz": {
+                "C-Class": "Sedan",
+                "E-Class": "Sedan",
+                "CLA": "Sedan",
+                "GLA": "Small SUV",
+                "GLB": "Small SUV",
+                "GLC": "Small SUV",
+                "GLE": "Large SUV",
+                "GLS": "Large SUV"
+            },
+            "Nissan": {
+                "Versa": "Sedan",
+                "Sentra": "Sedan",
+                "Altima": "Sedan",
+                "Maxima": "Sedan",
+                "Z": "Coupe",
+                "Kicks": "Small SUV",
+                "Rogue": "Small SUV",
+                "Murano": "Small SUV",
+                "Pathfinder": "Large SUV",
+                "Armada": "Large SUV",
+                "Frontier": "Truck",
+                "Titan": "Truck"
+            },
+            "Ram": {
+                "1500": "Truck",
+                "2500": "Truck",
+                "3500": "Truck",
+                "ProMaster": "Van"
+            },
+            "Subaru": {
+                "Impreza": "Sedan",
+                "Legacy": "Sedan",
+                "BRZ": "Coupe",
+                "Crosstrek": "Small SUV",
+                "Forester": "Small SUV",
+                "Outback": "Small SUV",
+                "Ascent": "Large SUV"
+            },
+            "Tesla": {
+                "Model 3": "Sedan",
+                "Model S": "Sedan",
+                "Model Y": "Small SUV",
+                "Model X": "Large SUV",
+                "Cybertruck": "Truck"
+            },
+            "Toyota": {
+                "Corolla": "Sedan",
+                "Camry": "Sedan",
+                "Prius": "Sedan",
+                "GR86": "Coupe",
+                "Supra": "Coupe",
+                "Corolla Cross": "Small SUV",
+                "RAV4": "Small SUV",
+                "Highlander": "Large SUV",
+                "Grand Highlander": "Large SUV",
+                "4Runner": "Large SUV",
+                "Sequoia": "Large SUV",
+                "Land Cruiser": "Large SUV",
+                "Tacoma": "Truck",
+                "Tundra": "Truck",
+                "Sienna": "Van"
+            },
+            "Volkswagen": {
+                "Jetta": "Sedan",
+                "Passat": "Sedan",
+                "Golf": "Sedan",
+                "Taos": "Small SUV",
+                "Tiguan": "Small SUV",
+                "Atlas": "Large SUV",
+                "ID.4": "Small SUV"
+            },
+            "Other": {}
+        };
+
+        const packages = {
+            1: {
+                name: "Ceramic Package",
+                description: "Interior and exterior detailing, " +
+                    "paint decontamination, ceramic coating, " +
+                    "and exterior plastic protection.",
+                duration: 240,
+                prices: [199, 209, 229, null]
+            },
+            2: {
+                name: "Full Interior",
+                description: "Interior vacuum, surface cleaning, " +
+                    "shampoo, steam cleaning, leather treatment, " +
+                    "mats, and windows.",
+                duration: 120,
+                prices: [179, 189, 199, 229]
+            },
+            3: {
+                name: "Full Exterior",
+                description: "Exterior wash, bug removal, clay bar, " +
+                    "paint sealant, tires, and windows.",
+                duration: 120,
+                prices: [129, 139, 149, 159]
+            },
+            4: {
+                name: "Elite Package",
+                description: "Complete interior and exterior detail " +
+                    "with ceramic sealant, shampoo, steam cleaning, " +
+                    "and leather treatment.",
+                duration: 120,
+                prices: [279, 289, 319, 349]
+            },
+            5: {
+                name: "Premium Package",
+                description: "Exterior detail with ceramic sealant, " +
+                    "interior vacuum, mats, leather treatment, " +
+                    "and finishing touches.",
+                duration: 120,
+                prices: [199, 209, 229, 249]
+            },
+            6: {
+                name: "Deluxe Package",
+                description: "Exterior wash, clay treatment, " +
+                    "ceramic sealant, interior vacuum, " +
+                    "surface cleaning, and mats.",
+                duration: 120,
+                prices: [169, 179, 189, 219]
+            }
+        };
+
         let selectedDateTime = null;
         let availabilityRequestId = 0;
+        let availableTimes = [];
+        let selectedBooking = null;
 
-        const dateInput =
-            document.getElementById("date");
-
+        const dateInput = document.getElementById("date");
+        const yearInput = document.getElementById("year");
+        const makeInput = document.getElementById("make");
+        const modelInput = document.getElementById("model");
+        const manualModelInput =
+            document.getElementById("manualModel");
+        const typeInput = document.getElementById("type");
+        const packageInput = document.getElementById("packageId");
         const appointmentForm =
             document.getElementById("appointmentForm");
 
         function getToday() {
             const today = new Date();
-
             const year = today.getFullYear();
-
             const month = String(
                 today.getMonth() + 1
             ).padStart(2, "0");
-
             const day = String(
                 today.getDate()
             ).padStart(2, "0");
@@ -247,23 +574,200 @@
             return year + "-" + month + "-" + day;
         }
 
-        dateInput.min = getToday();
+        function populateYears() {
+            const currentYear = new Date().getFullYear();
+
+            for (let year = currentYear + 1;
+                 year >= 1980; year--) {
+
+                const option = document.createElement("option");
+                option.value = year;
+                option.textContent = year;
+                yearInput.appendChild(option);
+            }
+        }
+
+        function populateMakes() {
+            Object.keys(vehicles).sort().forEach(make => {
+                const option = document.createElement("option");
+                option.value = make;
+                option.textContent = make;
+                makeInput.appendChild(option);
+            });
+        }
+
+        function populateModels() {
+            modelInput.innerHTML =
+                '<option value="">Select model</option>';
+
+            modelInput.disabled = !makeInput.value;
+
+            const make = makeInput.value;
+
+            if (!make) {
+                updateManualModel();
+                return;
+            }
+
+            Object.keys(vehicles[make]).sort().forEach(model => {
+                const option = document.createElement("option");
+                option.value = model;
+                option.textContent = model;
+                modelInput.appendChild(option);
+            });
+
+            const otherOption = document.createElement("option");
+            otherOption.value = "Other";
+            otherOption.textContent = "Other / Model not listed";
+            modelInput.appendChild(otherOption);
+
+            typeInput.value = "";
+            updateManualModel();
+        }
+
+        function updateManualModel() {
+            const manual =
+                modelInput.value === "Other";
+
+            document.getElementById(
+                "manualModelGroup"
+            ).style.display = manual ? "block" : "none";
+
+            manualModelInput.required = manual;
+
+            if (!manual) {
+                manualModelInput.value = "";
+            }
+        }
+
+        function updateVehicleType() {
+            const make = makeInput.value;
+            const model = modelInput.value;
+
+            if (make && model && model !== "Other") {
+                typeInput.value = vehicles[make][model] || "";
+            } else {
+                typeInput.value = "";
+            }
+
+            updateManualModel();
+            updatePackageSummary();
+        }
+
+        function getVehicleModel() {
+            if (modelInput.value === "Other") {
+                return manualModelInput.value.trim();
+            }
+
+            return modelInput.value;
+        }
+
+        function getPriceCategory(type) {
+            if (type === "Coupe" || type === "Sedan") {
+                return 0;
+            }
+
+            if (type === "Small SUV") {
+                return 1;
+            }
+
+            if (type === "Large SUV" || type === "Truck") {
+                return 2;
+            }
+
+            if (type === "Van") {
+                return 3;
+            }
+
+            return -1;
+        }
+
+        function getSelectedPrice() {
+            const packageId = Number(packageInput.value);
+            const selectedPackage = packages[packageId];
+            const category = getPriceCategory(typeInput.value);
+
+            if (!selectedPackage || category < 0) {
+                return null;
+            }
+
+            return selectedPackage.prices[category];
+        }
+
+        function formatPrice(price) {
+            return "$" + price.toFixed(2);
+        }
+
+        function updatePackageSummary() {
+            const packageId = Number(packageInput.value);
+            const selectedPackage = packages[packageId];
+
+            const name =
+                document.getElementById("packageName");
+            const description =
+                document.getElementById("packageDescription");
+            const duration =
+                document.getElementById("packageDuration");
+            const price =
+                document.getElementById("packagePrice");
+            const message =
+                document.getElementById("packageMessage");
+
+            name.textContent = "Select a package";
+            description.textContent = "";
+            duration.textContent = "";
+            price.textContent = "";
+            message.textContent = "";
+
+            if (!selectedPackage) {
+                return;
+            }
+
+            name.textContent = selectedPackage.name;
+            description.textContent =
+                selectedPackage.description;
+
+            duration.textContent =
+                "Duration: " +
+                (selectedPackage.duration / 60) +
+                " hours";
+
+            const category = getPriceCategory(typeInput.value);
+
+            if (category < 0) {
+                message.textContent =
+                    "Select your vehicle type to see the price.";
+                return;
+            }
+
+            const calculatedPrice = getSelectedPrice();
+
+            if (calculatedPrice === null) {
+                message.textContent =
+                    "This package is not available for " +
+                    "your selected vehicle type.";
+                return;
+            }
+
+            price.textContent = formatPrice(calculatedPrice);
+        }
 
         function formatTime(time) {
             const hour = time.substring(11, 16);
-            const [hours, minutes] = hour.split(":");
+            const parts = hour.split(":");
 
-            const hour12 = Number(hours) % 12 || 12;
+            const hours = Number(parts[0]);
+            const minutes = parts[1];
 
-            const ampm = Number(hours) >= 12
-                ? "PM"
-                : "AM";
+            const hour12 = hours % 12 || 12;
+            const ampm = hours >= 12 ? "PM" : "AM";
 
             return hour12 + ":" + minutes + " " + ampm;
         }
 
         function clearSelection() {
             selectedDateTime = null;
+            selectedBooking = null;
 
             document.getElementById(
                 "selection"
@@ -278,25 +782,83 @@
             ).textContent = "";
         }
 
-        dateInput.addEventListener("change", function() {
+        function resetAvailability() {
             availabilityRequestId++;
+            availableTimes = [];
 
             clearSelection();
 
             document.getElementById(
                 "availableTimes"
             ).innerHTML = "";
+        }
+
+        function vehicleChanged() {
+            resetAvailability();
+            updatePackageSummary();
+        }
+
+        yearInput.addEventListener("change", vehicleChanged);
+
+        makeInput.addEventListener("change", function() {
+            populateModels();
+            vehicleChanged();
         });
 
-        async function loadAvailability() {
-            const date = dateInput.value;
+        modelInput.addEventListener("change", function() {
+            updateVehicleType();
+            resetAvailability();
+        });
 
+        manualModelInput.addEventListener(
+            "input",
+            vehicleChanged
+        );
+
+        typeInput.addEventListener("change", vehicleChanged);
+
+        packageInput.addEventListener("change", vehicleChanged);
+
+        dateInput.addEventListener("change", resetAvailability);
+
+        function validateVehicleAndPackage() {
+            if (!yearInput.value ||
+                !makeInput.value ||
+                !getVehicleModel() ||
+                !typeInput.value) {
+
+                return "Please complete your vehicle information.";
+            }
+
+            if (!packageInput.value) {
+                return "Please select a detailing package.";
+            }
+
+            if (getSelectedPrice() === null) {
+                return "This detailing package is not available " +
+                    "for your vehicle.";
+            }
+
+            return "";
+        }
+
+        async function loadAvailability() {
             const container =
                 document.getElementById("availableTimes");
 
             const requestId = ++availabilityRequestId;
 
             clearSelection();
+
+            const validationError =
+                validateVehicleAndPackage();
+
+            if (validationError) {
+                container.textContent = validationError;
+                return;
+            }
+
+            const date = dateInput.value;
 
             if (!date) {
                 container.textContent =
@@ -310,13 +872,19 @@
                 return;
             }
 
+            const selectedPackage =
+                packages[Number(packageInput.value)];
+
+            const duration = selectedPackage.duration;
+
             container.textContent = "Loading...";
 
             try {
                 const response = await fetch(
                     "/api/availability?date=" +
                     encodeURIComponent(date) +
-                    "&duration=120"
+                    "&duration=" +
+                    encodeURIComponent(duration)
                 );
 
                 if (!response.ok) {
@@ -327,7 +895,6 @@
 
                 const times = await response.json();
 
-                // Ignore an outdated request
                 if (requestId !== availabilityRequestId) {
                     return;
                 }
@@ -336,17 +903,17 @@
 
                 const now = new Date();
 
-                const futureTimes = times.filter(time => {
+                availableTimes = times.filter(time => {
                     return new Date(time) > now;
                 });
 
-                if (futureTimes.length === 0) {
+                if (availableTimes.length === 0) {
                     container.textContent =
                         "No available times.";
                     return;
                 }
 
-                futureTimes.forEach(time => {
+                availableTimes.forEach(time => {
                     const button =
                         document.createElement("button");
 
@@ -362,18 +929,37 @@
                         });
 
                         button.classList.add("selected");
-
                         selectedDateTime = time;
+
+                        selectedBooking = {
+                            year: Number(yearInput.value),
+                            make: makeInput.value,
+                            model: getVehicleModel(),
+                            type: typeInput.value,
+                            packageId: Number(packageInput.value),
+                            price: getSelectedPrice(),
+                            dateTime: time
+                        };
 
                         document.getElementById(
                             "selectedDate"
-                        ).textContent =
-                            "Date: " + date;
+                        ).textContent = "Date: " + date;
 
                         document.getElementById(
                             "selectedTime"
                         ).textContent =
                             "Time: " + formatTime(time);
+
+                        document.getElementById(
+                            "selectedPackage"
+                        ).textContent =
+                            "Service: " + selectedPackage.name;
+
+                        document.getElementById(
+                            "selectedPrice"
+                        ).textContent =
+                            "Price: " +
+                            formatPrice(getSelectedPrice());
 
                         document.getElementById(
                             "selection"
@@ -396,7 +982,7 @@
         }
 
         function continueBooking() {
-            if (!selectedDateTime) {
+            if (!selectedDateTime || !selectedBooking) {
                 alert("Please select an appointment time.");
                 return;
             }
@@ -417,18 +1003,20 @@
             async function(event) {
                 event.preventDefault();
 
-                if (!selectedDateTime) {
-                    alert("Please select an appointment time.");
+                const message =
+                    document.getElementById("message");
+
+                if (!selectedDateTime || !selectedBooking) {
+                    message.textContent =
+                        "Please select an appointment time.";
                     return;
                 }
 
                 const submitButton =
                     document.getElementById("submitButton");
 
-                const message =
-                    document.getElementById("message");
-
-                const bookedDateTime = selectedDateTime;
+                const bookedDateTime =
+                    selectedBooking.dateTime;
 
                 const serviceAddress =
                     document.getElementById(
@@ -442,33 +1030,26 @@
                 }
 
                 const request = {
-                    name: document.getElementById("name")
-                        .value.trim(),
+                    name: document.getElementById(
+                        "name"
+                    ).value.trim(),
 
-                    email: document.getElementById("email")
-                        .value.trim(),
+                    email: document.getElementById(
+                        "email"
+                    ).value.trim(),
 
                     phoneNumber: document.getElementById(
                         "phoneNumber"
                     ).value.trim(),
 
-                    year: Number(
-                        document.getElementById("year").value
-                    ),
-
-                    make: document.getElementById("make")
-                        .value.trim(),
-
-                    model: document.getElementById("model")
-                        .value.trim(),
-
-                    type: document.getElementById("type")
-                        .value,
+                    year: selectedBooking.year,
+                    make: selectedBooking.make,
+                    model: selectedBooking.model,
+                    type: selectedBooking.type,
 
                     serviceAddress: serviceAddress,
 
-                    packageId: 1,
-
+                    packageId: selectedBooking.packageId,
                     appointmentDateTime: bookedDateTime
                 };
 
@@ -480,11 +1061,9 @@
                         "/api/appointments",
                         {
                             method: "POST",
-
                             headers: {
                                 "Content-Type": "application/json"
                             },
-
                             body: JSON.stringify(request)
                         }
                     );
@@ -503,6 +1082,17 @@
                     ).textContent =
                         "Appointment ID: " +
                         result.appointmentId;
+
+                    document.getElementById(
+                        "confirmationPackage"
+                    ).textContent =
+                        "Service: " + result.packageName;
+
+                    document.getElementById(
+                        "confirmationPrice"
+                    ).textContent =
+                        "Price: " +
+                        formatPrice(Number(result.price));
 
                     document.getElementById(
                         "confirmationDate"
@@ -538,6 +1128,7 @@
 
                     appointmentForm.reset();
                     selectedDateTime = null;
+                    selectedBooking = null;
 
                     document.getElementById(
                         "confirmation"
@@ -558,15 +1149,30 @@
                 "confirmation"
             ).style.display = "none";
 
-            clearSelection();
+            resetAvailability();
 
-            loadAvailability();
+            yearInput.value = "";
+            makeInput.value = "";
+            populateModels();
+
+            typeInput.value = "";
+            packageInput.value = "";
+            dateInput.value = "";
+
+            updatePackageSummary();
 
             window.scrollTo({
                 top: 0,
                 behavior: "smooth"
             });
         }
+
+        // Initialize booking page
+        populateYears();
+        populateMakes();
+
+        dateInput.min = getToday();
+        updatePackageSummary();
     </script>
 
 </body>

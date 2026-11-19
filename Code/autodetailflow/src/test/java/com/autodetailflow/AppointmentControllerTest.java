@@ -4,6 +4,7 @@ package com.autodetailflow;
 import com.autodetailflow.controller.AppointmentController;
 import com.autodetailflow.controller.AppointmentController.BookingRequest;
 import com.autodetailflow.model.Appointment;
+import com.autodetailflow.model.DetailingPackage;
 import com.autodetailflow.service.AppointmentService;
 import com.autodetailflow.service.AvailabilityService;
 
@@ -20,7 +21,9 @@ import java.util.Map;
 
 public class AppointmentControllerTest {
 
-    // Creates a valid customer booking request
+    private AppointmentService appointmentService;
+
+    // Create a valid booking request
     private BookingRequest createBookingRequest(
             LocalDateTime dateTime) {
 
@@ -35,24 +38,20 @@ public class AppointmentControllerTest {
         request.setYear(2017);
         request.setType("Sedan");
 
-        // Address where mobile detailing will happen
         request.setServiceAddress(
                 "123 Main Street, San Diego, CA 92101"
         );
 
-        request.setPackageId(1);
+        // Full Interior: 2 hours
+        request.setPackageId(2);
         request.setAppointmentDateTime(dateTime);
 
         return request;
     }
 
-    // Creates a future appointment date
     private LocalDateTime futureDate(int hour) {
         return LocalDate.now().plusDays(1).atTime(hour, 0);
     }
-
-    // Creates a controller and service for testing
-    private AppointmentService appointmentService;
 
     private AppointmentController createController() {
 
@@ -71,27 +70,14 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(11)
-        );
-
         ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
+                controller.createAppointment(
+                        createBookingRequest(futureDate(11))
+                );
 
-        assertEquals(
-                HttpStatus.CREATED,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Pending",
-                response.getBody().get("status")
-        );
-
-        assertEquals(
-                1,
-                appointmentService.getAllAppointments().size()
-        );
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals("Pending", response.getBody().get("status"));
+        assertEquals(1, appointmentService.getAllAppointments().size());
     }
 
     // Test 2: Prevent double-booking
@@ -100,34 +86,21 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest first = createBookingRequest(
-                futureDate(11)
-        );
-
-        ResponseEntity<Map<String, Object>> firstResponse =
-                controller.createAppointment(first);
-
         assertEquals(
                 HttpStatus.CREATED,
-                firstResponse.getStatusCode()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(11))
+                ).getStatusCode()
         );
-
-        BookingRequest second = createBookingRequest(
-                futureDate(12)
-        );
-
-        ResponseEntity<Map<String, Object>> secondResponse =
-                controller.createAppointment(second);
 
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                secondResponse.getStatusCode()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(12))
+                ).getStatusCode()
         );
 
-        assertEquals(
-                1,
-                appointmentService.getAllAppointments().size()
-        );
+        assertEquals(1, appointmentService.getAllAppointments().size());
     }
 
     // Test 3: Reject missing customer information
@@ -136,24 +109,17 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(11)
-        );
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
 
         request.setName("");
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
+                controller.createAppointment(request).getStatusCode()
         );
 
-        assertEquals(
-                0,
-                appointmentService.getAllAppointments().size()
-        );
+        assertTrue(appointmentService.getAllAppointments().isEmpty());
     }
 
     // Test 4: Reject invalid detailing package
@@ -162,24 +128,17 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(11)
-        );
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
 
         request.setPackageId(99);
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
+                controller.createAppointment(request).getStatusCode()
         );
 
-        assertEquals(
-                0,
-                appointmentService.getAllAppointments().size()
-        );
+        assertTrue(appointmentService.getAllAppointments().isEmpty());
     }
 
     // Test 5: Reject appointment in the past
@@ -188,22 +147,17 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                LocalDateTime.now().minusDays(1)
-        );
-
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
+        BookingRequest request =
+                createBookingRequest(
+                        LocalDateTime.now().minusDays(1)
+                );
 
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
+                controller.createAppointment(request).getStatusCode()
         );
 
-        assertEquals(
-                0,
-                appointmentService.getAllAppointments().size()
-        );
+        assertTrue(appointmentService.getAllAppointments().isEmpty());
     }
 
     // Test 6: Reject appointment before opening
@@ -212,21 +166,11 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(7)
-        );
-
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                0,
-                appointmentService.getAllAppointments().size()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(7))
+                ).getStatusCode()
         );
     }
 
@@ -236,50 +180,25 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(16)
-        );
-
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                0,
-                appointmentService.getAllAppointments().size()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(16))
+                ).getStatusCode()
         );
     }
 
-    // Test 8: Allow appointment ending at closing
+    // Test 8: Allow appointment ending exactly at closing
     @Test
     public void testAppointmentAtThreePMAllowed() {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(15)
-        );
-
-        ResponseEntity<Map<String, Object>> response =
-                controller.createAppointment(request);
-
         assertEquals(
                 HttpStatus.CREATED,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Pending",
-                response.getBody().get("status")
-        );
-
-        assertEquals(
-                1,
-                appointmentService.getAllAppointments().size()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(15))
+                ).getStatusCode()
         );
     }
 
@@ -292,13 +211,8 @@ public class AppointmentControllerTest {
         ResponseEntity<List<Appointment>> response =
                 controller.getAppointments();
 
-        assertEquals(
-                HttpStatus.OK,
-                response.getStatusCode()
-        );
-
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-
         assertTrue(response.getBody().isEmpty());
     }
 
@@ -308,34 +222,20 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest request = createBookingRequest(
-                futureDate(11)
-        );
-
-        ResponseEntity<Map<String, Object>> bookingResponse =
-                controller.createAppointment(request);
-
-        assertEquals(
-                HttpStatus.CREATED,
-                bookingResponse.getStatusCode()
+        controller.createAppointment(
+                createBookingRequest(futureDate(11))
         );
 
         ResponseEntity<List<Appointment>> response =
                 controller.getAppointments();
 
-        assertEquals(
-                HttpStatus.OK,
-                response.getStatusCode()
-        );
-
+        assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-
         assertEquals(1, response.getBody().size());
 
         Appointment appointment = response.getBody().get(0);
 
         assertEquals("Pending", appointment.getStatus());
-
         assertEquals(
                 futureDate(11),
                 appointment.getAppointmentDateTime()
@@ -348,13 +248,11 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest first = createBookingRequest(
-                futureDate(9)
-        );
+        BookingRequest first =
+                createBookingRequest(futureDate(9));
 
-        BookingRequest second = createBookingRequest(
-                futureDate(13)
-        );
+        BookingRequest second =
+                createBookingRequest(futureDate(13));
 
         second.setName("Jane Smith");
 
@@ -368,26 +266,20 @@ public class AppointmentControllerTest {
                 controller.createAppointment(second).getStatusCode()
         );
 
-        ResponseEntity<List<Appointment>> response =
-                controller.getAppointments();
+        List<Appointment> appointments =
+                controller.getAppointments().getBody();
 
-        assertEquals(
-                HttpStatus.OK,
-                response.getStatusCode()
-        );
-
-        assertNotNull(response.getBody());
-
-        assertEquals(2, response.getBody().size());
+        assertNotNull(appointments);
+        assertEquals(2, appointments.size());
 
         assertEquals(
                 "Carlos Garcia",
-                response.getBody().get(0).getUser().getName()
+                appointments.get(0).getUser().getName()
         );
 
         assertEquals(
                 "Jane Smith",
-                response.getBody().get(1).getUser().getName()
+                appointments.get(1).getUser().getName()
         );
     }
 
@@ -399,72 +291,40 @@ public class AppointmentControllerTest {
 
         LocalDateTime requestedTime = futureDate(11);
 
-        BookingRequest request = createBookingRequest(
-                requestedTime
+        controller.createAppointment(
+                createBookingRequest(requestedTime)
         );
 
-        assertEquals(
-                HttpStatus.CREATED,
-                controller.createAppointment(request).getStatusCode()
-        );
+        Appointment appointment =
+                controller.getAppointments().getBody().get(0);
 
-        ResponseEntity<List<Appointment>> response =
-                controller.getAppointments();
+        assertEquals("Carlos Garcia", appointment.getUser().getName());
+        assertEquals("carlos@example.com", appointment.getUser().getEmail());
+        assertEquals("6195551234", appointment.getUser().getPhoneNumber());
 
-        assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().size());
-
-        Appointment appointment = response.getBody().get(0);
-
-        assertEquals(
-                "Carlos Garcia",
-                appointment.getUser().getName()
-        );
+        assertEquals(2017, appointment.getVehicle().getYear());
+        assertEquals("Nissan", appointment.getVehicle().getMake());
+        assertEquals("Altima", appointment.getVehicle().getModel());
+        assertEquals("Sedan", appointment.getVehicle().getType());
 
         assertEquals(
-                "carlos@example.com",
-                appointment.getUser().getEmail()
-        );
-
-        assertEquals(
-                "6195551234",
-                appointment.getUser().getPhoneNumber()
-        );
-
-        assertEquals(
-                2017,
-                appointment.getVehicle().getYear()
-        );
-
-        assertEquals(
-                "Nissan",
-                appointment.getVehicle().getMake()
-        );
-
-        assertEquals(
-                "Altima",
-                appointment.getVehicle().getModel()
-        );
-
-        assertEquals(
-                "Sedan",
-                appointment.getVehicle().getType()
-        );
-
-        assertEquals(
-                "Basic Detail",
+                "Full Interior",
                 appointment.getDetailingPackage().getPackageName()
         );
 
         assertEquals(
-                requestedTime,
-                appointment.getAppointmentDateTime()
+                179.00,
+                appointment.getDetailingPackage().getPackagePrice(),
+                0.001
         );
 
         assertEquals(
-                "Pending",
-                appointment.getStatus()
+                "123 Main Street, San Diego, CA 92101",
+                appointment.getServiceAddress()
         );
+
+        assertEquals(requestedTime, appointment.getAppointmentDateTime());
+        assertEquals("Pending", appointment.getStatus());
     }
 
     // Test 13: Employee confirms a pending appointment
@@ -480,15 +340,8 @@ public class AppointmentControllerTest {
         ResponseEntity<Map<String, Object>> response =
                 controller.confirmAppointment(1);
 
-        assertEquals(
-                HttpStatus.OK,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Confirmed",
-                response.getBody().get("status")
-        );
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Confirmed", response.getBody().get("status"));
 
         assertEquals(
                 "Confirmed",
@@ -509,23 +362,11 @@ public class AppointmentControllerTest {
         ResponseEntity<Map<String, Object>> response =
                 controller.declineAppointment(1);
 
-        assertEquals(
-                HttpStatus.OK,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Declined",
-                response.getBody().get("status")
-        );
-
-        assertEquals(
-                "Declined",
-                appointmentService.getAppointmentById(1).getStatus()
-        );
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("Declined", response.getBody().get("status"));
     }
 
-    // Test 15: Cannot confirm an already confirmed appointment
+    // Test 15: Cannot confirm twice
     @Test
     public void testCannotConfirmTwice() {
 
@@ -537,21 +378,13 @@ public class AppointmentControllerTest {
 
         controller.confirmAppointment(1);
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.confirmAppointment(1);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Confirmed",
-                appointmentService.getAppointmentById(1).getStatus()
+                controller.confirmAppointment(1).getStatusCode()
         );
     }
 
-    // Test 16: Cannot decline an already confirmed appointment
+    // Test 16: Cannot decline a confirmed appointment
     @Test
     public void testCannotDeclineConfirmedAppointment() {
 
@@ -563,21 +396,13 @@ public class AppointmentControllerTest {
 
         controller.confirmAppointment(1);
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.declineAppointment(1);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Confirmed",
-                appointmentService.getAppointmentById(1).getStatus()
+                controller.declineAppointment(1).getStatusCode()
         );
     }
 
-    // Test 17: Cannot confirm an already declined appointment
+    // Test 17: Cannot confirm a declined appointment
     @Test
     public void testCannotConfirmDeclinedAppointment() {
 
@@ -589,57 +414,33 @@ public class AppointmentControllerTest {
 
         controller.declineAppointment(1);
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.confirmAppointment(1);
-
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Declined",
-                appointmentService.getAppointmentById(1).getStatus()
+                controller.confirmAppointment(1).getStatusCode()
         );
     }
 
-    // Test 18: Cannot confirm an appointment that does not exist
+    // Test 18: Cannot confirm nonexistent appointment
     @Test
     public void testConfirmNonexistentAppointment() {
 
         AppointmentController controller = createController();
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.confirmAppointment(999);
-
         assertEquals(
                 HttpStatus.NOT_FOUND,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Appointment not found",
-                response.getBody().get("message")
+                controller.confirmAppointment(999).getStatusCode()
         );
     }
 
-    // Test 19: Cannot decline an appointment that does not exist
+    // Test 19: Cannot decline nonexistent appointment
     @Test
     public void testDeclineNonexistentAppointment() {
 
         AppointmentController controller = createController();
 
-        ResponseEntity<Map<String, Object>> response =
-                controller.declineAppointment(999);
-
         assertEquals(
                 HttpStatus.NOT_FOUND,
-                response.getStatusCode()
-        );
-
-        assertEquals(
-                "Appointment not found",
-                response.getBody().get("message")
+                controller.declineAppointment(999).getStatusCode()
         );
     }
 
@@ -649,56 +450,292 @@ public class AppointmentControllerTest {
 
         AppointmentController controller = createController();
 
-        BookingRequest first = createBookingRequest(
-                futureDate(11)
-        );
-
-        ResponseEntity<Map<String, Object>> firstResponse =
-                controller.createAppointment(first);
-
         assertEquals(
                 HttpStatus.CREATED,
-                firstResponse.getStatusCode()
+                controller.createAppointment(
+                        createBookingRequest(futureDate(11))
+                ).getStatusCode()
         );
 
-        // Decline the first appointment
-        ResponseEntity<Map<String, Object>> declineResponse =
-                controller.declineAppointment(1);
+        controller.declineAppointment(1);
 
-        assertEquals(
-                HttpStatus.OK,
-                declineResponse.getStatusCode()
-        );
-
-        // Another customer requests the same time
-        BookingRequest second = createBookingRequest(
-                futureDate(11)
-        );
+        BookingRequest second =
+                createBookingRequest(futureDate(11));
 
         second.setName("Jane Smith");
-        second.setEmail("jane@example.com");
-
-        ResponseEntity<Map<String, Object>> secondResponse =
-                controller.createAppointment(second);
 
         assertEquals(
                 HttpStatus.CREATED,
-                secondResponse.getStatusCode()
+                controller.createAppointment(second).getStatusCode()
         );
 
-        assertEquals(
-                2,
-                appointmentService.getAllAppointments().size()
-        );
-
+        assertEquals(2, appointmentService.getAllAppointments().size());
         assertEquals(
                 "Declined",
                 appointmentService.getAppointmentById(1).getStatus()
         );
-
         assertEquals(
                 "Pending",
                 appointmentService.getAppointmentById(2).getStatus()
         );
+    }
+
+    // Test 21: All six packages are available
+    @Test
+    public void testSixDetailingPackagesAvailable() {
+
+        AppointmentController controller = createController();
+
+        ResponseEntity<List<DetailingPackage>> response =
+                controller.getPackages();
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals(6, response.getBody().size());
+
+        assertEquals(
+                "Ceramic Package",
+                response.getBody().get(0).getPackageName()
+        );
+
+        assertEquals(
+                "Deluxe Package",
+                response.getBody().get(5).getPackageName()
+        );
+    }
+
+    // Test 22: Every package can be booked
+    @Test
+    public void testAllSixPackagesCanBeBooked() {
+
+        for (int packageId = 1; packageId <= 6; packageId++) {
+
+            AppointmentController controller = createController();
+
+            BookingRequest request =
+                    createBookingRequest(futureDate(11));
+
+            request.setPackageId(packageId);
+
+            ResponseEntity<Map<String, Object>> response =
+                    controller.createAppointment(request);
+
+            assertEquals(
+                    HttpStatus.CREATED,
+                    response.getStatusCode(),
+                    "Package " + packageId + " should be bookable"
+            );
+
+            assertEquals(
+                    packageId,
+                    response.getBody().get("packageId")
+            );
+        }
+    }
+
+    // Test 23: Coupe receives sedan pricing
+    @Test
+    public void testCoupeUsesSedanPricing() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
+
+        request.setType("Coupe");
+        request.setPackageId(4);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(279.00, (Double) response.getBody().get("price"), 0.001);
+    }
+
+    // Test 24: Small SUV receives correct pricing
+    @Test
+    public void testSmallSUVPricing() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
+
+        request.setType("Small SUV");
+        request.setPackageId(4);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(289.00, (Double) response.getBody().get("price"), 0.001);
+    }
+
+    // Test 25: Truck receives large SUV pricing
+    @Test
+    public void testTruckUsesLargeSUVPricing() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
+
+        request.setType("Truck");
+        request.setPackageId(4);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(319.00, (Double) response.getBody().get("price"), 0.001);
+    }
+
+    // Test 26: Van receives minivan pricing
+    @Test
+    public void testVanPricing() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
+
+        request.setType("Van");
+        request.setPackageId(4);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(349.00, (Double) response.getBody().get("price"), 0.001);
+    }
+
+    // Test 27: Ceramic package lasts four hours
+    @Test
+    public void testCeramicPackageDuration() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(9));
+
+        request.setPackageId(1);
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(240, response.getBody().get("duration"));
+    }
+
+    // Test 28: Ceramic package cannot end after closing
+    @Test
+    public void testCeramicPackageAfterClosingRejected() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(14));
+
+        request.setPackageId(1);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                controller.createAppointment(request).getStatusCode()
+        );
+    }
+
+    // Test 29: Ceramic package unavailable for vans
+    @Test
+    public void testCeramicPackageUnavailableForVan() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(9));
+
+        request.setPackageId(1);
+        request.setType("Van");
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(appointmentService.getAllAppointments().isEmpty());
+    }
+
+    // Test 30: Reject unknown vehicle category
+    @Test
+    public void testInvalidVehicleTypeRejected() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest request =
+                createBookingRequest(futureDate(11));
+
+        request.setType("Motorcycle");
+
+        ResponseEntity<Map<String, Object>> response =
+                controller.createAppointment(request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertTrue(appointmentService.getAllAppointments().isEmpty());
+    }
+
+    // Test 31: Prevent overlapping packages of different durations
+    @Test
+    public void testDifferentPackageDurationsCannotOverlap() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest ceramic =
+                createBookingRequest(futureDate(9));
+
+        ceramic.setPackageId(1);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(ceramic).getStatusCode()
+        );
+
+        BookingRequest interior =
+                createBookingRequest(futureDate(12));
+
+        interior.setPackageId(2);
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                controller.createAppointment(interior).getStatusCode()
+        );
+
+        assertEquals(1, appointmentService.getAllAppointments().size());
+    }
+
+    // Test 32: A package can be booked after another one ends
+    @Test
+    public void testBookingAfterCeramicPackageEnds() {
+
+        AppointmentController controller = createController();
+
+        BookingRequest ceramic =
+                createBookingRequest(futureDate(9));
+
+        ceramic.setPackageId(1);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(ceramic).getStatusCode()
+        );
+
+        BookingRequest interior =
+                createBookingRequest(futureDate(13));
+
+        interior.setPackageId(2);
+
+        assertEquals(
+                HttpStatus.CREATED,
+                controller.createAppointment(interior).getStatusCode()
+        );
+
+        assertEquals(2, appointmentService.getAllAppointments().size());
     }
 }

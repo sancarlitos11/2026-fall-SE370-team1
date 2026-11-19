@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
@@ -22,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
-
     private final AtomicInteger nextId = new AtomicInteger(1);
 
     public AppointmentController(
@@ -39,6 +39,85 @@ public class AppointmentController {
                 appointmentService.getAllAppointments();
 
         return ResponseEntity.ok(appointments);
+    }
+
+    // Returns the available detailing packages
+    @GetMapping("/packages")
+    public ResponseEntity<List<DetailingPackage>> getPackages() {
+
+        List<DetailingPackage> packages = new ArrayList<>();
+
+        for (int id = 1; id <= 6; id++) {
+            packages.add(createPackage(id));
+        }
+
+        return ResponseEntity.ok(packages);
+    }
+
+    // Creates one of the six detailing packages
+    private DetailingPackage createPackage(int packageId) {
+
+        switch (packageId) {
+
+            case 1:
+                return new DetailingPackage(
+                        1,
+                        "Ceramic Package",
+                        "Ceramic detailing package",
+                        199.00,
+                        240
+                );
+
+            case 2:
+                return new DetailingPackage(
+                        2,
+                        "Full Interior",
+                        "Complete interior detailing",
+                        179.00,
+                        120
+                );
+
+            case 3:
+                return new DetailingPackage(
+                        3,
+                        "Full Exterior",
+                        "Complete exterior detailing",
+                        129.00,
+                        120
+                );
+
+            case 4:
+                return new DetailingPackage(
+                        4,
+                        "Elite Package",
+                        "Elite detailing service",
+                        279.00,
+                        120
+                );
+
+            case 5:
+                return new DetailingPackage(
+                        5,
+                        "Premium Package",
+                        "Premium detailing service",
+                        199.00,
+                        120
+                );
+
+            case 6:
+                return new DetailingPackage(
+                        6,
+                        "Deluxe Package",
+                        "Deluxe detailing service",
+                        169.00,
+                        120
+                );
+
+            default:
+                throw new IllegalArgumentException(
+                        "Invalid detailing package"
+                );
+        }
     }
 
     // Confirms a pending appointment request
@@ -150,24 +229,26 @@ public class AppointmentController {
                 );
             }
 
-            // Validate package information
-            if (request.getPackageId() != 1) {
-                throw new IllegalArgumentException(
-                        "Invalid detailing package"
-                );
-            }
+            // Get the customer's selected detailing package
+            DetailingPackage selectedPackage =
+                    createPackage(request.getPackageId());
 
-            // Temporary Basic Detail package
-            DetailingPackage detailingPackage =
-                    new DetailingPackage(
-                            1,
-                            "Basic Detail",
-                            "Interior and exterior cleaning",
-                            100.00,
-                            120
+            // Calculate the price using the vehicle category
+            double calculatedPrice =
+                    selectedPackage.calculatePrice(
+                            request.getType()
                     );
 
-            // Validate appointment date and time
+            // Create the package with the calculated price
+            DetailingPackage detailingPackage =
+                    new DetailingPackage(
+                            selectedPackage.getPackageId(),
+                            selectedPackage.getPackageName(),
+                            selectedPackage.getPackageDescription(),
+                            calculatedPrice,
+                            selectedPackage.getPackageDuration()
+                    );
+
             LocalDateTime appointmentTime =
                     request.getAppointmentDateTime();
 
@@ -218,7 +299,7 @@ public class AppointmentController {
                     request.getType()
             );
 
-            // Create appointment with the service address
+            // Create appointment with service and address
             Appointment appointment = new Appointment(
                     id,
                     customer,
@@ -228,7 +309,7 @@ public class AppointmentController {
                     request.getServiceAddress().trim()
             );
 
-            // AppointmentService rejects overlapping bookings
+            // Reject overlapping appointment times
             appointmentService.addAppointment(appointment);
 
             response.put(
@@ -249,6 +330,26 @@ public class AppointmentController {
             response.put(
                     "serviceAddress",
                     appointment.getServiceAddress()
+            );
+
+            response.put(
+                    "packageId",
+                    detailingPackage.getPackageId()
+            );
+
+            response.put(
+                    "packageName",
+                    detailingPackage.getPackageName()
+            );
+
+            response.put(
+                    "price",
+                    detailingPackage.getPackagePrice()
+            );
+
+            response.put(
+                    "duration",
+                    detailingPackage.getPackageDuration()
             );
 
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -279,7 +380,6 @@ public class AppointmentController {
         private int year;
         private String type;
 
-        // Location of the mobile detailing service
         private String serviceAddress;
 
         private int packageId;
