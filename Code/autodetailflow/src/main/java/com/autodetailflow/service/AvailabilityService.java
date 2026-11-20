@@ -1,5 +1,4 @@
 
-
 package com.autodetailflow.service;
 
 import com.autodetailflow.model.Appointment;
@@ -10,6 +9,20 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AvailabilityService {
+
+    // Stores time periods blocked by employees.
+    private final List<BlockedTime> blockedTimes = new ArrayList<>();
+
+    // Represents a blocked period of time.
+    private static class BlockedTime {
+        private final LocalDateTime start;
+        private final LocalDateTime end;
+
+        public BlockedTime(LocalDateTime start, LocalDateTime end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
 
     // Checks whether an appointment should block a time slot.
     public boolean blocksAvailability(String status) {
@@ -39,6 +52,55 @@ public class AvailabilityService {
                 || !requestedEnd.isAfter(existingStart);
     }
 
+    // Adds an unavailable time period.
+    public synchronized void blockTime(
+            LocalDateTime start,
+            LocalDateTime end) {
+
+        if (start == null || end == null || !start.isBefore(end)) {
+            throw new IllegalArgumentException(
+                    "Blocked time must have a valid start and end"
+            );
+        }
+
+        blockedTimes.add(new BlockedTime(start, end));
+    }
+
+    // Removes a previously blocked time period.
+    public synchronized boolean unblockTime(
+            LocalDateTime start,
+            LocalDateTime end) {
+
+        return blockedTimes.removeIf(block ->
+                block.start.equals(start)
+                        && block.end.equals(end)
+        );
+    }
+
+    // Checks whether a requested appointment overlaps blocked time.
+    public synchronized boolean isBlocked(
+            LocalDateTime requestedStart,
+            int durationMinutes) {
+
+        if (requestedStart == null || durationMinutes <= 0) {
+            throw new IllegalArgumentException(
+                    "Invalid requested appointment time"
+            );
+        }
+
+        LocalDateTime requestedEnd =
+                requestedStart.plusMinutes(durationMinutes);
+
+        for (BlockedTime block : blockedTimes) {
+            if (requestedStart.isBefore(block.end)
+                    && requestedEnd.isAfter(block.start)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     // Generates available appointment times.
     public List<LocalDateTime> getAvailableTimes(
             LocalDateTime openingTime,
@@ -49,9 +111,11 @@ public class AvailabilityService {
 
         List<LocalDateTime> availableTimes = new ArrayList<>();
 
-        if (durationMinutes <= 0 ||
-                existingStarts.size() != existingDurations.size()) {
-            throw new IllegalArgumentException("Invalid appointment data");
+        if (durationMinutes <= 0
+                || existingStarts.size() != existingDurations.size()) {
+            throw new IllegalArgumentException(
+                    "Invalid appointment data"
+            );
         }
 
         LocalDateTime currentTime = openingTime;
@@ -61,8 +125,8 @@ public class AvailabilityService {
 
             boolean available = true;
 
+            // Check existing appointments.
             for (int i = 0; i < existingStarts.size(); i++) {
-
                 if (!isTimeAvailable(
                         currentTime,
                         durationMinutes,
@@ -72,6 +136,11 @@ public class AvailabilityService {
                     available = false;
                     break;
                 }
+            }
+
+            // Check employee-blocked periods.
+            if (available && isBlocked(currentTime, durationMinutes)) {
+                available = false;
             }
 
             if (available) {
@@ -96,8 +165,6 @@ public class AvailabilityService {
 
         for (Appointment appointment : appointments) {
 
-            // Pending, Scheduled and Confirmed appointments
-            // reserve their time slots.
             if (blocksAvailability(appointment.getStatus())) {
 
                 existingStarts.add(
@@ -111,7 +178,6 @@ public class AvailabilityService {
             }
         }
 
-        // Reuse the existing availability calculation.
         return getAvailableTimes(
                 openingTime,
                 closingTime,

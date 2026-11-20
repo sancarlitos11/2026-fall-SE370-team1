@@ -227,22 +227,101 @@
             color: #721c24;
         }
 
-        .view-description {
+        .view-description, .summary {
             color: #555;
             font-size: 14px;
             margin-bottom: 15px;
         }
 
-        .summary {
-            color: #555;
+        .availability-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 22px;
+            margin: 28px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .availability-panel h2 {
+            color: #243447;
+            margin-top: 0;
+        }
+
+        .availability-form {
+            display: flex;
+            align-items: end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .field label {
+            font-weight: bold;
+            color: #243447;
             font-size: 14px;
-            margin-bottom: 15px;
+        }
+
+        .field input, .field select {
+            padding: 9px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font: inherit;
+            background-color: white;
+        }
+
+        .field select {
+            cursor: pointer;
+        }
+
+        .blocked-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .blocked-slot {
+            border: 1px solid #f1c0bb;
+            background: #fff5f4;
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .blocked-slot button {
+            background: #c0392b;
+            padding: 7px 10px;
+            font-size: 12px;
+        }
+
+        .blocked-slot button:hover {
+            background: #922b21;
+        }
+
+        .availability-note {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .secondary-button {
+            background: #475569;
+        }
+
+        .secondary-button:hover {
+            background: #334155;
         }
     </style>
 </head>
 
 <body>
-
 <div class="container">
 
     <h1>AutoDetail Flow</h1>
@@ -250,10 +329,7 @@
 
     <div class="toolbar">
         <h2>Customer Appointments</h2>
-
-        <button onclick="loadAppointments()">
-            Refresh Appointments
-        </button>
+        <button onclick="loadAppointments()">Refresh Appointments</button>
     </div>
 
     <div id="notification"
@@ -261,32 +337,28 @@
          role="status"
          aria-live="polite"></div>
 
-    <!-- Appointment navigation -->
     <div class="tabs" role="group" aria-label="Appointment views">
 
-        <button
-            id="requestsTab"
-            class="tab-button active"
-            onclick="changeView('requests')"
-            aria-pressed="true">
+        <button id="requestsTab"
+                class="tab-button active"
+                onclick="changeView('requests')"
+                aria-pressed="true">
             Appointment Requests
             <span id="requestsCount" class="count">0</span>
         </button>
 
-        <button
-            id="upcomingTab"
-            class="tab-button"
-            onclick="changeView('upcoming')"
-            aria-pressed="false">
+        <button id="upcomingTab"
+                class="tab-button"
+                onclick="changeView('upcoming')"
+                aria-pressed="false">
             Upcoming Appointments
             <span id="upcomingCount" class="count">0</span>
         </button>
 
-        <button
-            id="allTab"
-            class="tab-button"
-            onclick="changeView('all')"
-            aria-pressed="false">
+        <button id="allTab"
+                class="tab-button"
+                onclick="changeView('all')"
+                aria-pressed="false">
             All Appointments
             <span id="allCount" class="count">0</span>
         </button>
@@ -325,16 +397,72 @@
         </table>
     </div>
 
+    <section class="availability-panel"
+             aria-labelledby="availabilityHeading">
+
+        <h2 id="availabilityHeading">
+            Manage Available Appointment Times
+        </h2>
+
+        <p class="availability-note">
+            Block a standard two-hour appointment slot to stop new bookings.
+            Business hours are 9 AM to 5 PM.
+        </p>
+
+        <form id="blockForm" class="availability-form">
+
+            <div class="field">
+                <label for="blockDate">Date</label>
+                <input type="date" id="blockDate" required>
+            </div>
+
+            <div class="field">
+                <label for="blockStart">Appointment Time</label>
+
+                <select id="blockStart" required>
+                    <option value="09:00">9:00 AM - 11:00 AM</option>
+                    <option value="11:00">11:00 AM - 1:00 PM</option>
+                    <option value="13:00">1:00 PM - 3:00 PM</option>
+                    <option value="15:00">3:00 PM - 5:00 PM</option>
+                </select>
+            </div>
+
+            <button id="blockButton" type="submit">
+                Block 2-Hour Slot
+            </button>
+
+            <button class="secondary-button"
+                    type="button"
+                    onclick="loadBlockedTimes()">
+                Refresh Blocked Times
+            </button>
+
+        </form>
+
+        <p class="availability-note">
+            Select one of the four available time slots.
+            Blocking a slot prevents new appointments that overlap it.
+            Existing appointments are not canceled.
+        </p>
+
+        <h3>Blocked Appointment Slots</h3>
+
+        <p id="blockedSummary"
+           class="availability-note"
+           aria-live="polite">
+            Choose a date to view blocked times.
+        </p>
+
+        <div id="blockedSlots" class="blocked-slots"></div>
+
+    </section>
+
 </div>
 
 <script>
-    // Stores appointments received from Spring Boot
     let allAppointments = [];
-
-    // The employee starts on Appointment Requests
     let currentView = "requests";
 
-    // Safely display customer-provided text
     function escapeHTML(value) {
         return String(value ?? "").replace(
             /[&<>"']/g,
@@ -348,15 +476,10 @@
         );
     }
 
-    // Converts the appointment date into a JavaScript Date
     function getAppointmentDate(appointment) {
-        const value = appointment.appointmentDateTime;
-
-        if (!value) {
-            return new Date(NaN);
-        }
-
-        return new Date(value);
+        return appointment.appointmentDateTime
+            ? new Date(appointment.appointmentDateTime)
+            : new Date(NaN);
     }
 
     function formatDate(dateTime) {
@@ -395,11 +518,9 @@
 
         const amount = Number(price);
 
-        if (!Number.isFinite(amount)) {
-            return "Price unavailable";
-        }
-
-        return "$" + amount.toFixed(2);
+        return Number.isFinite(amount)
+            ? "$" + amount.toFixed(2)
+            : "Price unavailable";
     }
 
     function formatDuration(minutes) {
@@ -424,7 +545,6 @@
         return hours + " hr " + remainingMinutes + " min";
     }
 
-    // Displays success or error messages
     function showNotification(message, isError) {
         const notification =
             document.getElementById("notification");
@@ -438,15 +558,12 @@
         notification.style.display = "block";
     }
 
-    // Switches between the three appointment views
     function changeView(view) {
         currentView = view;
-
         updateTabs();
         displayAppointments();
     }
 
-    // Updates the selected tab
     function updateTabs() {
         const tabs = {
             requests: document.getElementById("requestsTab"),
@@ -458,6 +575,7 @@
             const selected = view === currentView;
 
             tabs[view].classList.toggle("active", selected);
+
             tabs[view].setAttribute(
                 "aria-pressed",
                 String(selected)
@@ -479,19 +597,16 @@
         }
     }
 
-    // Checks whether an appointment is pending
     function isPending(appointment) {
         return String(appointment.status || "")
             .toLowerCase() === "pending";
     }
 
-    // Checks whether an appointment is confirmed
     function isConfirmed(appointment) {
         return String(appointment.status || "")
             .toLowerCase() === "confirmed";
     }
 
-    // Checks whether an appointment is upcoming
     function isUpcoming(appointment) {
         if (!isConfirmed(appointment)) {
             return false;
@@ -500,49 +615,35 @@
         const appointmentDate =
             getAppointmentDate(appointment);
 
-        if (isNaN(appointmentDate.getTime())) {
-            return false;
-        }
-
-        // Only confirmed appointments starting now or later
-        return appointmentDate.getTime() >= Date.now();
+        return !isNaN(appointmentDate.getTime()) &&
+            appointmentDate.getTime() >= Date.now();
     }
 
-    // Sorts appointments from earliest to latest
     function sortByDateAscending(appointments) {
-        return appointments.sort((a, b) => {
-            return getAppointmentDate(a).getTime() -
-                getAppointmentDate(b).getTime();
-        });
+        return appointments.sort((a, b) =>
+            getAppointmentDate(a).getTime() -
+            getAppointmentDate(b).getTime()
+        );
     }
 
-    // Sorts newest requests first
     function sortByNewest(appointments) {
-        return appointments.sort((a, b) => {
-            return Number(b.appointmentId) -
-                Number(a.appointmentId);
-        });
+        return appointments.sort((a, b) =>
+            Number(b.appointmentId) -
+            Number(a.appointmentId)
+        );
     }
 
-    // Updates the numbers shown on each tab
     function updateCounts() {
-        const pendingCount =
+        document.getElementById("requestsCount").textContent =
             allAppointments.filter(isPending).length;
 
-        const upcomingCount =
-            allAppointments.filter(isUpcoming).length;
-
-        document.getElementById("requestsCount").textContent =
-            pendingCount;
-
         document.getElementById("upcomingCount").textContent =
-            upcomingCount;
+            allAppointments.filter(isUpcoming).length;
 
         document.getElementById("allCount").textContent =
             allAppointments.length;
     }
 
-    // Selects the appointments for the current view
     function getFilteredAppointments() {
         if (currentView === "requests") {
             return sortByNewest(
@@ -559,7 +660,6 @@
         return sortByNewest([...allAppointments]);
     }
 
-    // Displays an empty-table message
     function showEmptyMessage(message) {
         const table =
             document.getElementById("appointmentTable");
@@ -577,18 +677,13 @@
         table.appendChild(row);
     }
 
-    // Sends confirm or decline request to Spring Boot
     async function updateAppointment(id, action, buttons) {
-
-        if (action === "decline") {
-            const approved = confirm(
-                "Are you sure you want to decline appointment #" +
-                id + "?"
-            );
-
-            if (!approved) {
-                return;
-            }
+        if (action === "decline" &&
+                !confirm(
+                    "Are you sure you want to decline appointment #" +
+                    id + "?"
+                )) {
+            return;
         }
 
         buttons.forEach(button => {
@@ -598,9 +693,7 @@
         try {
             const response = await fetch(
                 "/api/appointments/" + id + "/" + action,
-                {
-                    method: "PATCH"
-                }
+                { method: "PATCH" }
             );
 
             const result = await response.json();
@@ -618,7 +711,6 @@
                 false
             );
 
-            // Refresh the appointment list and tab counts
             await loadAppointments();
 
         } catch (error) {
@@ -632,7 +724,6 @@
         }
     }
 
-    // Creates a table row for one appointment
     function createAppointmentRow(appointment) {
         const customer = appointment.user || {};
         const vehicle = appointment.vehicle || {};
@@ -647,44 +738,30 @@
         const row = document.createElement("tr");
 
         row.innerHTML = `
-            <td>
-                ${escapeHTML(appointment.appointmentId)}
-            </td>
+            <td>${escapeHTML(appointment.appointmentId)}</td>
 
             <td>
                 <strong>${escapeHTML(customer.name)}</strong>
-                <div class="contact">
-                    ${escapeHTML(customer.email)}
-                </div>
-                <div class="contact">
-                    ${escapeHTML(customer.phoneNumber)}
-                </div>
+                <div class="contact">${escapeHTML(customer.email)}</div>
+                <div class="contact">${escapeHTML(customer.phoneNumber)}</div>
             </td>
 
             <td>
                 ${escapeHTML(vehicle.year)}
                 ${escapeHTML(vehicle.make)}
                 ${escapeHTML(vehicle.model)}
-                <div class="contact">
-                    ${escapeHTML(vehicle.type)}
-                </div>
+                <div class="contact">${escapeHTML(vehicle.type)}</div>
             </td>
 
             <td class="service-details">
-                <strong>
-                    ${escapeHTML(service.packageName)}
-                </strong>
+                <strong>${escapeHTML(service.packageName)}</strong>
 
                 <div class="service-price">
-                    ${escapeHTML(
-                        formatPrice(service.packagePrice)
-                    )}
+                    ${escapeHTML(formatPrice(service.packagePrice))}
                 </div>
 
                 <div class="service-duration">
-                    ${escapeHTML(
-                        formatDuration(service.packageDuration)
-                    )}
+                    ${escapeHTML(formatDuration(service.packageDuration))}
                 </div>
             </td>
 
@@ -716,7 +793,6 @@
         const actionCell =
             row.querySelector(".action-cell");
 
-        // Pending appointments can be confirmed or declined
         if (isPending(appointment)) {
             const actions = document.createElement("div");
             actions.className = "actions";
@@ -766,7 +842,6 @@
         return row;
     }
 
-    // Displays appointments based on the selected tab
     function displayAppointments() {
         updateCounts();
 
@@ -805,24 +880,19 @@
         }
 
         appointments.forEach(appointment => {
-            const row = createAppointmentRow(appointment);
-            table.appendChild(row);
+            table.appendChild(
+                createAppointmentRow(appointment)
+            );
         });
     }
 
-    // Retrieves appointments from Spring Boot
     async function loadAppointments() {
-        const table =
-            document.getElementById("appointmentTable");
-
         showEmptyMessage("Loading appointments...");
 
         try {
             const response = await fetch(
                 "/api/appointments",
-                {
-                    cache: "no-store"
-                }
+                { cache: "no-store" }
             );
 
             if (!response.ok) {
@@ -862,9 +932,272 @@
         }
     }
 
-    // Load appointments when the employee page opens
-    loadAppointments();
+    function localDateString(date) {
+        const year = date.getFullYear();
+        const month =
+            String(date.getMonth() + 1).padStart(2, "0");
+        const day =
+            String(date.getDate()).padStart(2, "0");
 
+        return `${year}-${month}-${day}`;
+    }
+
+    function slotTimeLabel(hour) {
+        const period = hour >= 12 ? "PM" : "AM";
+        const hour12 = hour % 12 || 12;
+
+        return `${hour12}:00 ${period}`;
+    }
+
+    function selectedSlot() {
+        const date =
+            document.getElementById("blockDate").value;
+
+        const time =
+            document.getElementById("blockStart").value;
+
+        if (!date || !time) {
+            throw new Error(
+                "Select a date and appointment time."
+            );
+        }
+
+        const allowedTimes = [
+            "09:00",
+            "11:00",
+            "13:00",
+            "15:00"
+        ];
+
+        if (!allowedTimes.includes(time)) {
+            throw new Error(
+                "Choose a valid appointment time."
+            );
+        }
+
+        const startHour = Number(time.slice(0, 2));
+
+        return {
+            start: `${date}T${time}:00`,
+            end: `${date}T${String(
+                startHour + 2
+            ).padStart(2, "0")}:00:00`
+        };
+    }
+
+    async function sendBlockedTime(method, slot) {
+        const response = await fetch(
+            "/api/availability/blocked",
+            {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(slot)
+            }
+        );
+
+        let result = {};
+
+        try {
+            result = await response.json();
+        } catch (error) {
+            // Use fallback error message.
+        }
+
+        if (!response.ok) {
+            throw new Error(
+                result.error ||
+                result.message ||
+                "Unable to update blocked time."
+            );
+        }
+
+        return result;
+    }
+
+    async function blockSelectedTime(event) {
+        event.preventDefault();
+
+        const button =
+            document.getElementById("blockButton");
+
+        button.disabled = true;
+
+        try {
+            const slot = selectedSlot();
+
+            await sendBlockedTime("POST", slot);
+
+            showNotification(
+                "Appointment time blocked successfully.",
+                false
+            );
+
+            await loadBlockedTimes();
+
+        } catch (error) {
+            showNotification(error.message, true);
+
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    async function unblockSlot(start, end, button) {
+        if (!confirm("Unblock this appointment time?")) {
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+            await sendBlockedTime(
+                "DELETE",
+                { start, end }
+            );
+
+            showNotification(
+                "Appointment time unblocked successfully.",
+                false
+            );
+
+            await loadBlockedTimes();
+
+        } catch (error) {
+            showNotification(error.message, true);
+            button.disabled = false;
+        }
+    }
+
+    async function loadBlockedTimes() {
+        const date =
+            document.getElementById("blockDate").value;
+
+        const summary =
+            document.getElementById("blockedSummary");
+
+        const container =
+            document.getElementById("blockedSlots");
+
+        container.innerHTML = "";
+
+        if (!date) {
+            summary.textContent =
+                "Choose a date to view blocked times.";
+            return;
+        }
+
+        summary.textContent =
+            "Loading blocked times...";
+
+        try {
+            const response = await fetch(
+                "/api/availability/blocked?date=" +
+                encodeURIComponent(date) +
+                "&duration=120",
+                { cache: "no-store" }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    "Unable to retrieve blocked times."
+                );
+            }
+
+            const slots = await response.json();
+
+            if (!Array.isArray(slots)) {
+                throw new Error(
+                    "Invalid blocked-time data received."
+                );
+            }
+
+            if (slots.length === 0) {
+                summary.textContent =
+                    "No blocked appointment slots for this date.";
+                return;
+            }
+
+            summary.textContent =
+                slots.length +
+                " blocked two-hour slot" +
+                (slots.length === 1 ? "." : "s.");
+
+            slots.forEach(value => {
+                const start = String(value);
+                const hour = Number(start.slice(11, 13));
+
+                if (!Number.isInteger(hour)) {
+                    return;
+                }
+
+                const end =
+                    `${date}T${String(
+                        hour + 2
+                    ).padStart(2, "0")}:00:00`;
+
+                const normalizedStart =
+                    `${date}T${String(
+                        hour
+                    ).padStart(2, "0")}:00:00`;
+
+                const item =
+                    document.createElement("div");
+
+                item.className = "blocked-slot";
+
+                const label =
+                    document.createElement("span");
+
+                label.textContent =
+                    slotTimeLabel(hour) +
+                    " - " +
+                    slotTimeLabel(hour + 2);
+
+                const button =
+                    document.createElement("button");
+
+                button.textContent = "Unblock";
+
+                button.addEventListener("click", () => {
+                    unblockSlot(
+                        normalizedStart,
+                        end,
+                        button
+                    );
+                });
+
+                item.appendChild(label);
+                item.appendChild(button);
+                container.appendChild(item);
+            });
+
+        } catch (error) {
+            summary.textContent =
+                "Could not load blocked appointment times.";
+
+            showNotification(error.message, true);
+        }
+    }
+
+    document.getElementById("blockDate").value =
+        localDateString(new Date());
+
+    document.getElementById("blockForm")
+        .addEventListener(
+            "submit",
+            blockSelectedTime
+        );
+
+    document.getElementById("blockDate")
+        .addEventListener(
+            "change",
+            loadBlockedTimes
+        );
+
+    loadAppointments();
+    loadBlockedTimes();
 </script>
 
 </body>

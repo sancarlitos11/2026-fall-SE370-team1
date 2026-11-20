@@ -56,6 +56,17 @@ public class AppointmentService {
         if (availabilityService.blocksAvailability(
                 appointment.getStatus())) {
 
+            // Reject times blocked by an employee
+            if (availabilityService.isBlocked(
+                    requestedStart,
+                    requestedDuration)) {
+
+                throw new IllegalArgumentException(
+                        "This appointment time is blocked by an employee"
+                );
+            }
+
+            // Reject overlapping appointments
             for (Appointment existing : appointments) {
 
                 if (availabilityService.blocksAvailability(
